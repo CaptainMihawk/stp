@@ -10,7 +10,7 @@ type PortalViewContextValue = {
 const PortalViewContext = createContext<PortalViewContextValue | null>(null)
 
 export function PortalViewProvider({ children }: { children: ReactNode }) {
-  const [view, setView] = useState<StaffPortalView>('funcionario')
+  const [view, setView] = useState<StaffPortalView>('gestor')
   return (
     <PortalViewContext.Provider value={{ view, setView }}>
       {children}
