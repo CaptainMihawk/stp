@@ -42,52 +42,15 @@ export async function listarMembrosSetor(setor_id: number): Promise<MembroSetor[
 
 /**
  * Colegas do setor para escolher cedente na troca.
- * MEMBRO não pode usar listar_membros_setor (STP.md) — consulta direta com RLS.
+ * Usa a edge function (bypass RLS) para funcionários sem acesso direto à tabela.
  */
 export async function listarColegasSetor(
   setor_id: number,
-  excludeProfileId: string,
 ): Promise<MembroSetor[]> {
-  const { data, error } = await supabase
-    .from('profiles_setores')
-    .select(
-      `
-      profile_id,
-      role_setor,
-      ativo,
-      profiles!inner (
-        nome_completo,
-        matricula,
-        ativo
-      )
-    `,
-    )
-    .eq('setor_id', setor_id)
-    .eq('ativo', true)
-    .neq('profile_id', excludeProfileId)
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  return (data ?? [])
-    .map((row) => {
-      const raw = row.profiles as unknown
-      const profile = (Array.isArray(raw) ? raw[0] : raw) as {
-        nome_completo: string
-        matricula: string
-        ativo: boolean
-      } | null
-      if (!profile?.ativo) return null
-      return {
-        profile_id: row.profile_id as string,
-        nome_completo: profile.nome_completo,
-        matricula: profile.matricula,
-        role_setor: row.role_setor as MembroSetor['role_setor'],
-        ativo: row.ativo as boolean,
-      }
-    })
-    .filter((m): m is MembroSetor => m !== null)
+  return callEdgeFunction('setores', {
+    action: 'listar_membros_setor',
+    setor_id,
+  })
 }
 
 // ---------------------------------------------------------------------------
