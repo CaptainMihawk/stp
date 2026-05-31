@@ -7,10 +7,12 @@ const STATUS_TERMINAIS: StatusSolicitacao[] = [
   'revogado',
 ]
 
-/** Status em que o gestor pode usar revogar_solicitacao (STP.md). */
+/**
+ * Status em que o gestor pode usar revogar_solicitacao.
+ * Exclui 'aguardando_cedente' e 'pendente' porque nesses status
+ * o gestor já pode recusar via homologação — não faz sentido ter ambas.
+ */
 const STATUS_GESTOR_REVOGAR: StatusSolicitacao[] = [
-  'aguardando_cedente',
-  'pendente',
   'aprovado',
   'pedido_revogacao',
 ]
