@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Layout } from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { Turno } from '../lib/types'
-import { PasswordPanel } from './PasswordPanel'
 import { Tabs, type TabOption } from '../components/Tabs'
 import { EmptyState } from '../components/EmptyState'
 import { RequestCard } from '../components/RequestCard'
@@ -11,7 +10,7 @@ import { SearchableSelect } from '../components/SearchableSelect'
 import { TurnoSelect } from '../components/TurnoSelect'
 import * as solicitacoesService from '../services/solicitacoesService'
 import * as setoresService from '../services/setoresService'
-import { FileText, ArrowLeftRight } from 'lucide-react'
+import { FileText, ArrowLeftRight, ChevronLeft, ChevronRight } from 'lucide-react'
 
 type PlantaoInput = {
   data: string
@@ -30,15 +29,6 @@ export function FuncionarioPage() {
   const [solicitacoesMinhas, setSolicitacoesMinhas] = useState<solicitacoesService.SolicitacaoListItem[]>([])
   const [solicitacoesRecebidas, setSolicitacoesRecebidas] = useState<solicitacoesService.SolicitacaoListItem[]>([])
 
-  // Badge de notificação para solicitações recebidas não respondidas
-  const solicitacoesPendentes = solicitacoesRecebidas.filter(
-    (s) => s.status === 'aguardando_cedente',
-  ).length
-  const tabOptions: TabOption[] = [
-    { id: 'minhas', label: 'Minhas Solicitações', icon: '📤' },
-    { id: 'recebidas', label: 'Solicitações Recebidas', icon: '📥', badge: solicitacoesPendentes },
-  ]
-  
   // Loading states
   const [isLoadingSectores, setIsLoadingSectores] = useState(false)
   const [isLoadingMembros, setIsLoadingMembros] = useState(false)
@@ -49,6 +39,63 @@ export function FuncionarioPage() {
   // Feedback alerts
   const [formError, setFormError] = useState<string | null>(null)
   const [formSuccess, setFormSuccess] = useState<string | null>(null)
+
+  // Month filter — default to current month (June 2026)
+  const now = new Date()
+  const [filterYear, setFilterYear] = useState(now.getFullYear())
+  const [filterMonth, setFilterMonth] = useState(now.getMonth()) // 0-indexed
+
+  const monthNames = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+  ]
+
+  function goToPrevMonth() {
+    if (filterMonth === 0) {
+      setFilterYear(y => y - 1)
+      setFilterMonth(11)
+    } else {
+      setFilterMonth(m => m - 1)
+    }
+  }
+
+  function goToNextMonth() {
+    if (filterMonth === 11) {
+      setFilterYear(y => y + 1)
+      setFilterMonth(0)
+    } else {
+      setFilterMonth(m => m + 1)
+    }
+  }
+
+  const isNextMonthFuture =
+    filterYear > now.getFullYear() ||
+    (filterYear === now.getFullYear() && filterMonth > now.getMonth() + 1)
+
+  // Also block going before January 2026 (app start)
+  const isPrevMonthPast =
+    filterYear < 2026 || (filterYear === 2026 && filterMonth < 0)
+
+  // Filter solicitations by selected month (based on criado_em)
+  function filterByMonth(items: solicitacoesService.SolicitacaoListItem[]) {
+    return items.filter((item) => {
+      const d = new Date(item.criado_em)
+      return d.getFullYear() === filterYear && d.getMonth() === filterMonth
+    })
+  }
+
+  const filteredMinhas = useMemo(() => filterByMonth(solicitacoesMinhas), [solicitacoesMinhas, filterYear, filterMonth])
+  const filteredRecebidas = useMemo(() => filterByMonth(solicitacoesRecebidas), [solicitacoesRecebidas, filterYear, filterMonth])
+
+  // Badge de notificação para solicitações recebidas não respondidas
+  const solicitacoesPendentes = useMemo(
+    () => solicitacoesRecebidas.filter((s) => s.status === 'aguardando_cedente').length,
+    [solicitacoesRecebidas],
+  )
+  const tabOptions: TabOption[] = [
+    { id: 'minhas', label: 'Minhas Solicitações', icon: '📤' },
+    { id: 'recebidas', label: 'Solicitações Recebidas', icon: '📥', badge: solicitacoesPendentes },
+  ]
 
   // Form State
   const [selectedSetorId, setSelectedSetorId] = useState<string>('')
@@ -252,17 +299,17 @@ export function FuncionarioPage() {
     <Layout title="Portal do Funcionário">
       <div className="grid two-columns">
         {/* Left Side: Create Exchange Form */}
-        <section className="panel">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <ArrowLeftRight size={22} style={{ color: 'var(--primary)' }} />
+        <section className="panel" style={{ height: 'fit-content' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', fontSize: '1.1rem' }}>
+            <ArrowLeftRight size={20} style={{ color: 'var(--primary)' }} />
             Propor Nova Troca
           </h2>
-          <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-            Preencha os dados e escolha um colega do mesmo setor. O gestor homologará a troca automaticamente após o aceite do colega.
+          <p style={{ color: 'var(--muted)', fontSize: '0.8rem', marginBottom: '16px' }}>
+            Preencha os dados e escolha um colega do mesmo setor.
           </p>
 
-          <form className="form-grid" onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <form className="form-grid" onSubmit={handleSubmit} style={{ gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <SearchableSelect
                 label="Seu Setor Ativo"
                 value={selectedSetorId}
@@ -294,9 +341,9 @@ export function FuncionarioPage() {
             </div>
 
             {/* Requisitante Shift block */}
-            <div className="plantao-block full-width">
+            <div className="plantao-block full-width" style={{ padding: '12px' }}>
               <TurnoSelect
-                label="Seu Plantão (Que você vai CEDER)"
+                label="Seu Plantão (que você vai CEDER)"
                 dateValue={meuPlantao.data}
                 turnoValue={meuPlantao.turno}
                 onDateChange={(data) => setMeuPlantao(prev => ({ ...prev, data }))}
@@ -305,9 +352,9 @@ export function FuncionarioPage() {
             </div>
 
             {/* Cedente Shift block with compatibility constraints */}
-            <div className="plantao-block full-width">
+            <div className="plantao-block full-width" style={{ padding: '12px' }}>
               <TurnoSelect
-                label="Plantão do Colega (Que você quer RECEBER)"
+                label="Plantão do Colega (que você quer RECEBER)"
                 dateValue={plantaoDestino.data}
                 turnoValue={plantaoDestino.turno}
                 onDateChange={(data) => setPlantaoDestino(prev => ({ ...prev, data }))}
@@ -316,30 +363,48 @@ export function FuncionarioPage() {
               />
             </div>
 
-            <label className="full-width">
-              Observação (Opcional)
+            <label className="full-width" style={{ fontSize: '0.85rem' }}>
+              Observação (opcional)
               <textarea
+                rows={2}
                 value={observacao}
                 onChange={(e) => setObservacao(e.target.value)}
                 placeholder="Ex: Motivo pessoal, necessidade de ajuste de horário..."
               />
             </label>
 
-            {formError && <div className="error-box">{formError}</div>}
-            {formSuccess && <div className="info-box">{formSuccess}</div>}
+            {formError && <div className="error-box" style={{ fontSize: '0.8rem', padding: '8px 12px' }}>{formError}</div>}
+            {formSuccess && <div className="info-box" style={{ fontSize: '0.8rem', padding: '8px 12px' }}>{formSuccess}</div>}
 
-            <button className="primary-button full-width" disabled={isSubmiting}>
-              {isSubmiting ? 'Enviando Proposta...' : 'Enviar Proposta de Troca'}
+            <button className="primary-button full-width" disabled={isSubmiting} style={{ padding: '10px' }}>
+              {isSubmiting ? 'Enviando...' : 'Enviar Proposta'}
             </button>
           </form>
         </section>
 
         {/* Right Side: Solicitations list (with tabs) */}
         <section className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-            <FileText size={22} style={{ color: 'var(--primary)' }} />
-            Fluxo de Trocas
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FileText size={22} style={{ color: 'var(--primary)' }} />
+              Fluxo de Trocas
+            </h2>
+            <div className="month-navigator">
+              <button type="button" className="month-nav-btn" onClick={goToPrevMonth} disabled={isPrevMonthPast} title="Mês anterior">
+                <ChevronLeft size={16} />
+              </button>
+              <span className="month-label">{monthNames[filterMonth]} {filterYear}</span>
+              <button
+                type="button"
+                className="month-nav-btn"
+                onClick={goToNextMonth}
+                disabled={isNextMonthFuture}
+                title="Próximo mês"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
 
           <Tabs
             options={tabOptions}
@@ -347,19 +412,19 @@ export function FuncionarioPage() {
             onChange={setActiveTab}
           />
 
-          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px', flexGrow: 1 }}>
+          <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px', flexGrow: 1 }}>
             {isLoadingList ? (
               <div className="center-screen" style={{ minHeight: '100px' }}>Carregando solicitações...</div>
             ) : activeTab === 'minhas' ? (
-              solicitacoesMinhas.length === 0 ? (
+              filteredMinhas.length === 0 ? (
                 <EmptyState
-                  title="Nenhuma proposta enviada"
-                  description="Preencha o formulário ao lado para propor sua primeira troca de plantão."
+                  title="Nenhuma proposta neste mês"
+                  description="Nenhuma solicitação encontrada para o período selecionado."
                   icon="📤"
                 />
               ) : (
                 <div className="request-list">
-                  {solicitacoesMinhas.map((item) => (
+                  {filteredMinhas.map((item) => (
                     <RequestCard
                       key={item.id}
                       item={item}
@@ -371,15 +436,15 @@ export function FuncionarioPage() {
                   ))}
                 </div>
               )
-            ) : solicitacoesRecebidas.length === 0 ? (
+            ) : filteredRecebidas.length === 0 ? (
               <EmptyState
-                title="Nenhuma proposta recebida"
-                description="Quando algum colega propuser uma troca de plantão com você, ela aparecerá aqui."
+                title="Nenhuma proposta recebida neste mês"
+                description="Nenhuma solicitação recebida encontrada para o período selecionado."
                 icon="📥"
               />
             ) : (
               <div className="request-list">
-                {solicitacoesRecebidas.map((item) => (
+                {filteredRecebidas.map((item) => (
                   <RequestCard
                     key={item.id}
                     item={item}
@@ -392,10 +457,6 @@ export function FuncionarioPage() {
                 ))}
               </div>
             )}
-          </div>
-
-          <div style={{ marginTop: '24px' }}>
-            <PasswordPanel />
           </div>
         </section>
       </div>
