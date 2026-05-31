@@ -7,6 +7,7 @@ import { PasswordPanel } from './PasswordPanel'
 import { Tabs, type TabOption } from '../components/Tabs'
 import { EmptyState } from '../components/EmptyState'
 import { RequestCard } from '../components/RequestCard'
+import { SearchableSelect } from '../components/SearchableSelect'
 import { TurnoSelect } from '../components/TurnoSelect'
 import * as solicitacoesService from '../services/solicitacoesService'
 import * as setoresService from '../services/setoresService'
@@ -72,8 +73,9 @@ export function FuncionarioPage() {
   async function loadMembros(setorId: number) {
     setIsLoadingMembros(true)
     try {
-      const data = await setoresService.listarColegasSetor(setorId, profile?.id ?? '')
-      setMembrosSetor(data)
+      const data = await setoresService.listarColegasSetor(setorId)
+      // Filtra o próprio usuário da lista (edge function retorna todos)
+      setMembrosSetor(data.filter((m) => m.profile_id !== profile?.id))
       setSelectedCedenteId('')
     } catch (err) {
       console.error('Erro ao listar membros do setor:', err)
@@ -146,6 +148,11 @@ export function FuncionarioPage() {
 
     if (!meuPlantao.data || !meuPlantao.turno || !plantaoDestino.data || !plantaoDestino.turno) {
       setFormError('Preencha as datas e turnos de ambos os plantões.')
+      return
+    }
+
+    if (meuPlantao.data === plantaoDestino.data && meuPlantao.turno === plantaoDestino.turno) {
+      setFormError('Não pode trocar o mesmo plantão (mesma data e mesmo turno) com um colega.')
       return
     }
 
@@ -248,44 +255,34 @@ export function FuncionarioPage() {
 
           <form className="form-grid" onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <label>
-                Seu Setor Ativo
-                <select
-                  required
-                  value={selectedSetorId}
-                  onChange={(e) => setSelectedSetorId(e.target.value)}
-                  disabled={isLoadingSectores}
-                >
-                  {isLoadingSectores ? (
-                    <option>Carregando setores...</option>
-                  ) : meusSetores.length === 0 ? (
-                    <option value="">Sem setores vinculados</option>
-                  ) : (
-                    meusSetores.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nome}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </label>
+              <SearchableSelect
+                label="Seu Setor Ativo"
+                value={selectedSetorId}
+                onChange={setSelectedSetorId}
+                options={meusSetores.map((s) => ({
+                  value: String(s.id),
+                  label: s.nome,
+                }))}
+                placeholder={isLoadingSectores ? 'Carregando setores...' : 'Selecione o setor'}
+                disabled={isLoadingSectores || meusSetores.length === 0}
+                emptyMessage="Sem setores vinculados"
+              />
 
-              <label>
-                Com quem quer trocar?
-                <select
-                  required
-                  value={selectedCedenteId}
-                  onChange={(e) => setSelectedCedenteId(e.target.value)}
-                  disabled={isLoadingMembros || !selectedSetorId}
-                >
-                  <option value="">Selecione o colega</option>
-                  {membrosSetor.map((m) => (
-                    <option key={m.profile_id} value={m.profile_id}>
-                      {m.nome_completo} ({m.matricula})
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <SearchableSelect
+                label="Com quem quer trocar?"
+                value={selectedCedenteId}
+                onChange={setSelectedCedenteId}
+                options={membrosSetor.map((m) => ({
+                  value: m.profile_id,
+                  label: m.nome_completo,
+                  hint: m.matricula,
+                  searchText: `${m.nome_completo} ${m.matricula} ${m.matricula}`,
+                }))}
+                placeholder={isLoadingMembros || !selectedSetorId ? 'Selecione um setor primeiro' : 'Buscar colega...'}
+                disabled={isLoadingMembros || !selectedSetorId || membrosSetor.length === 0}
+                searchPlaceholder="Buscar por nome ou matrícula..."
+                noResultsMessage="Nenhum colega encontrado para esta busca"
+              />
             </div>
 
             {/* Requisitante Shift block */}
