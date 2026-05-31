@@ -22,10 +22,6 @@ export function FuncionarioPage() {
   const { profile } = useAuth()
   
   // Tabs config
-  const tabOptions: TabOption[] = [
-    { id: 'minhas', label: 'Minhas Solicitações', icon: '📤' },
-    { id: 'recebidas', label: 'Solicitações Recebidas', icon: '📥' },
-  ]
   const [activeTab, setActiveTab] = useState<string>('minhas')
 
   // UI state
@@ -33,6 +29,15 @@ export function FuncionarioPage() {
   const [membrosSetor, setMembrosSetor] = useState<setoresService.MembroSetor[]>([])
   const [solicitacoesMinhas, setSolicitacoesMinhas] = useState<solicitacoesService.SolicitacaoListItem[]>([])
   const [solicitacoesRecebidas, setSolicitacoesRecebidas] = useState<solicitacoesService.SolicitacaoListItem[]>([])
+
+  // Badge de notificação para solicitações recebidas não respondidas
+  const solicitacoesPendentes = solicitacoesRecebidas.filter(
+    (s) => s.status === 'aguardando_cedente',
+  ).length
+  const tabOptions: TabOption[] = [
+    { id: 'minhas', label: 'Minhas Solicitações', icon: '📤' },
+    { id: 'recebidas', label: 'Solicitações Recebidas', icon: '📥', badge: solicitacoesPendentes },
+  ]
   
   // Loading states
   const [isLoadingSectores, setIsLoadingSectores] = useState(false)
@@ -94,8 +99,11 @@ export function FuncionarioPage() {
         solicitacoesService.listarSolicitacoes('minhas'),
         solicitacoesService.listarSolicitacoes('cedente'),
       ])
-      setSolicitacoesMinhas(minhas)
-      setSolicitacoesRecebidas(recebidas)
+      // Ordena da mais nova para a mais antiga
+      const sortByDate = (a: solicitacoesService.SolicitacaoListItem, b: solicitacoesService.SolicitacaoListItem) =>
+        new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime()
+      setSolicitacoesMinhas(minhas.sort(sortByDate))
+      setSolicitacoesRecebidas(recebidas.sort(sortByDate))
     } catch (err) {
       console.error('Erro ao listar solicitações:', err)
     } finally {

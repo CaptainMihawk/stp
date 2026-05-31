@@ -32,6 +32,8 @@ export function GestorPage() {
     setIsLoading(true)
     try {
       const data = await solicitacoesService.listarSolicitacoesComoGestor(profile.id)
+      // Ordena da mais nova para a mais antiga
+      data.sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
       setSolicitacoes(data)
     } catch (err) {
       console.error('Erro ao buscar solicitações para o gestor:', err)
