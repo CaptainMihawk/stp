@@ -1,11 +1,16 @@
 import React, { useState } from 'react'
-import { LogOut, Sun, Moon, UserCircle2, KeyRound, ShieldAlert } from 'lucide-react'
+import { LogOut, Sun, Moon, UserCircle2, KeyRound, ShieldAlert, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { usePortalView } from '../contexts/PortalViewContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { SessionExpiryHint } from './SessionExpiryHint'
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { profile, signOut, isGestorSetor, updatePassword } = useAuth()
   const portalView = usePortalView()
   const { theme, toggleTheme } = useTheme()
@@ -34,8 +39,20 @@ export const Sidebar: React.FC = () => {
   }
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${isOpen ? ' is-open' : ''}`}>
       <div>
+        {/* Close button (mobile only) */}
+        <div className="sidebar-close">
+          <button
+            type="button"
+            className="sidebar-close-btn"
+            onClick={onClose}
+            aria-label="Fechar menu"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
         <div className="brand">
           <div className="brand-mark">STP</div>
           <div>
