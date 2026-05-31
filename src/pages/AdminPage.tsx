@@ -241,8 +241,8 @@ export function AdminPage() {
     <Layout title="Administração">
       <div className="grid two-columns">
         {/* Left: Forms */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <section className="panel" style={{ padding: '12px 16px' }}>
+        <div className="admin-forms">
+          <section className="panel">
             <Tabs
               options={tabOptions}
               activeTab={activeTab}
@@ -251,24 +251,24 @@ export function AdminPage() {
           </section>
 
           {activeTab === 'usuarios' && (
-            <section className="panel" style={{ padding: '16px' }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem', marginBottom: '4px' }}>
-                <UserPlus size={16} style={{ color: 'var(--primary)' }} />
+            <section className="panel">
+              <h3 className="admin-section-title">
+                <UserPlus size={16} />
                 Novo Usuário
               </h3>
-              <p style={{ color: 'var(--muted)', fontSize: '0.78rem', marginBottom: '14px' }}>
+              <p className="admin-section-desc">
                 Cria credenciais com alocação opcional a um setor.
               </p>
 
-              <form className="form-grid" onSubmit={handleCreateUser} style={{ gap: '10px' }}>
+              <form className="form-grid" onSubmit={handleCreateUser}>
                 <div className="form-row">
-                  <label style={{ flex: 1 }}>
-                    <Hash size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                  <label>
+                    <Hash size={12} />
                     Matrícula
                     <input required value={userForm.matricula} onChange={(e) => setUserForm(prev => ({ ...prev, matricula: e.target.value }))} placeholder="ex: 2026101" />
                   </label>
-                  <label style={{ flex: 1 }}>
-                    <User size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                  <label>
+                    <User size={12} />
                     Perfil
                     <select value={userForm.role} onChange={(e) => { const r = e.target.value as Role; setUserForm(prev => ({ ...prev, role: r, setor_id: undefined, role_setor: undefined })) }}>
                       <option value="FUNCIONARIO">FUNCIONÁRIO</option>
@@ -279,22 +279,22 @@ export function AdminPage() {
                 </div>
 
                 <label>
-                  <User size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                  <User size={12} />
                   Nome Completo
                   <input required value={userForm.nome_completo} onChange={(e) => setUserForm(prev => ({ ...prev, nome_completo: e.target.value }))} placeholder="Nome completo" />
                 </label>
 
                 <label>
-                  <Key size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                  <Key size={12} />
                   Senha Inicial
                   <input required type="password" value={userForm.password} onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))} placeholder="Mínimo 6 caracteres" />
                 </label>
 
                 {(userForm.role === 'FUNCIONARIO' || userForm.role === 'GESTOR') && (
                   <div className="form-section">
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary-strong)', textTransform: 'uppercase' }}>⚡ Alocação de Setor</span>
+                    <span className="form-section-label">⚡ Alocação de Setor</span>
                     <div className="form-row">
-                      <label style={{ flex: 1 }}>
+                      <label>
                         Setor
                         <select value={userForm.setor_id ?? ''} onChange={(e) => { const val = e.target.value; setUserForm(prev => ({ ...prev, setor_id: val ? Number(val) : undefined, role_setor: val ? (userForm.role === 'GESTOR' ? 'GESTOR' : 'MEMBRO') : undefined })) }}>
                           <option value="">Não vincular</option>
@@ -302,7 +302,7 @@ export function AdminPage() {
                         </select>
                       </label>
                       {userForm.setor_id && (
-                        <label style={{ flex: 1 }}>
+                        <label>
                           Função
                           <select value={userForm.role_setor ?? 'MEMBRO'} onChange={(e) => setUserForm(prev => ({ ...prev, role_setor: e.target.value as RoleSetor }))}>
                             <option value="MEMBRO">MEMBRO</option>
@@ -314,9 +314,9 @@ export function AdminPage() {
                   </div>
                 )}
 
-                {alertMessage && <div className={alertMessage.error ? 'error-box' : 'info-box'} style={{ fontSize: '0.8rem', padding: '8px 12px' }}>{alertMessage.text}</div>}
+                {alertMessage && <div className={alertMessage.error ? 'error-box' : 'info-box'}>{alertMessage.text}</div>}
 
-                <button className="primary-button full-width" disabled={actionLoading} style={{ padding: '10px' }}>
+                <button className="primary-button full-width" disabled={actionLoading}>
                   {actionLoading ? 'Criando...' : 'Criar Usuário'}
                 </button>
               </form>
@@ -324,37 +324,37 @@ export function AdminPage() {
           )}
 
           {activeTab === 'setores' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <section className="panel" style={{ padding: '16px' }}>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem', marginBottom: '4px' }}>
-                  <FolderPlus size={16} style={{ color: 'var(--primary)' }} />
+            <div className="admin-forms">
+              <section className="panel">
+                <h3 className="admin-section-title">
+                  <FolderPlus size={16} />
                   Novo Setor
                 </h3>
-                <p style={{ color: 'var(--muted)', fontSize: '0.78rem', marginBottom: '14px' }}>
+                <p className="admin-section-desc">
                   Crie setores físicos ou administrativos.
                 </p>
-                <form className="form-grid" onSubmit={handleCreateSetor} style={{ gap: '10px' }}>
+                <form className="form-grid" onSubmit={handleCreateSetor}>
                   <label>
-                    <Building2 size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                    <Building2 size={12} />
                     Nome do Setor
                     <input required value={setorNome} onChange={(e) => setSetorNome(e.target.value)} placeholder="Ex: UTI Adulto, Pronto Socorro" />
                   </label>
-                  {alertMessage && <div className={alertMessage.error ? 'error-box' : 'info-box'} style={{ fontSize: '0.8rem', padding: '8px 12px' }}>{alertMessage.text}</div>}
-                  <button className="primary-button full-width" disabled={actionLoading} style={{ padding: '10px' }}>{actionLoading ? 'Criando...' : 'Adicionar Setor'}</button>
+                  {alertMessage && <div className={alertMessage.error ? 'error-box' : 'info-box'}>{alertMessage.text}</div>}
+                  <button className="primary-button full-width" disabled={actionLoading}>{actionLoading ? 'Criando...' : 'Adicionar Setor'}</button>
                 </form>
               </section>
 
-              <section className="panel" style={{ padding: '16px' }}>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem', marginBottom: '4px' }}>
-                  <Link size={16} style={{ color: 'var(--primary)' }} />
+              <section className="panel">
+                <h3 className="admin-section-title">
+                  <Link size={16} />
                   Vincular Membro
                 </h3>
-                <p style={{ color: 'var(--muted)', fontSize: '0.78rem', marginBottom: '14px' }}>
+                <p className="admin-section-desc">
                   Estabeleça vínculo a um setor.
                 </p>
-                <form className="form-grid" onSubmit={handleVincularMembro} style={{ gap: '10px' }}>
+                <form className="form-grid" onSubmit={handleVincularMembro}>
                   <label>
-                    <Building2 size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                    <Building2 size={12} />
                     Setor
                     <select required value={linkSetorId} onChange={(e) => setLinkSetorId(e.target.value)}>
                       <option value="">Selecione...</option>
@@ -365,8 +365,8 @@ export function AdminPage() {
                     <SearchableSelect label="Colaborador" value={linkProfileId} onChange={setLinkProfileId} options={staffUserOptions} placeholder="Selecione..." searchPlaceholder="Buscar por nome ou matrícula..." required emptyMessage="Nenhum colaborador cadastrado" />
                     <label>Função<select value={linkRoleSetor} onChange={(e) => setLinkRoleSetor(e.target.value as RoleSetor)}><option value="MEMBRO">MEMBRO</option><option value="GESTOR">GESTOR</option></select></label>
                   </div>
-                  {alertMessage && <div className={alertMessage.error ? 'error-box' : 'info-box'} style={{ fontSize: '0.8rem', padding: '8px 12px' }}>{alertMessage.text}</div>}
-                  <button className="primary-button full-width" disabled={actionLoading} style={{ padding: '10px' }}>{actionLoading ? 'Vinculando...' : 'Registrar Vínculo'}</button>
+                  {alertMessage && <div className={alertMessage.error ? 'error-box' : 'info-box'}>{alertMessage.text}</div>}
+                  <button className="primary-button full-width" disabled={actionLoading}>{actionLoading ? 'Vinculando...' : 'Registrar Vínculo'}</button>
                 </form>
               </section>
             </div>
@@ -374,19 +374,19 @@ export function AdminPage() {
         </div>
 
         {/* Right: Lists */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="admin-lists">
           {activeTab === 'usuarios' && (
-            <section className="panel" style={{ padding: '16px', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem', marginBottom: '12px' }}>
-                <Users size={16} style={{ color: 'var(--primary)' }} />
+            <section className="panel admin-table-section">
+              <h3 className="admin-section-title">
+                <Users size={16} />
                 Contas Operacionais
               </h3>
               {isUsersLoading ? (
-                <div className="center-screen" style={{ minHeight: '60px' }}>Carregando...</div>
+                <div className="center-screen">Carregando...</div>
               ) : users.length === 0 ? (
                 <EmptyState title="Nenhum usuário" description="Use o formulário ao lado para cadastrar." />
               ) : (
-                <div className="table-wrap" style={{ fontSize: '0.8rem' }}>
+                <div className="table-wrap">
                   <table>
                     <thead>
                       <tr>
@@ -399,10 +399,10 @@ export function AdminPage() {
                     <tbody>
                       {users.map((u) => (
                         <tr key={u.id}>
-                          <td style={{ fontWeight: 700, fontSize: '0.78rem' }}>{u.matricula}</td>
-                          <td style={{ fontSize: '0.8rem' }}>{u.nome_completo}</td>
-                          <td><span className="badge" style={{ fontSize: '0.6rem' }}>{u.role}</span></td>
-                          <td>{u.ativo ? <BadgeCheck size={16} style={{ color: 'var(--success-strong)', verticalAlign: 'middle' }} /> : <BadgeX size={16} style={{ color: 'var(--danger-strong)', verticalAlign: 'middle' }} />}</td>
+                          <td className="td-matricula" data-label="Matrícula">{u.matricula}</td>
+                          <td data-label="Nome">{u.nome_completo}</td>
+                          <td data-label="Acesso"><span className="badge">{u.role}</span></td>
+                          <td data-label="Status">{u.ativo ? <BadgeCheck size={16} className="icon-success" /> : <BadgeX size={16} className="icon-danger" />}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -413,25 +413,25 @@ export function AdminPage() {
           )}
 
           {activeTab === 'setores' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <section className="panel" style={{ padding: '16px', maxHeight: '50vh', overflowY: 'auto' }}>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem', marginBottom: '12px' }}>
-                  <Folder size={16} style={{ color: 'var(--primary)' }} />
+            <div className="admin-lists">
+              <section className="panel admin-table-section">
+                <h3 className="admin-section-title">
+                  <Folder size={16} />
                   Setores Ativos
                 </h3>
                 {isSetoresLoading ? (
-                  <div className="center-screen" style={{ minHeight: '60px' }}>Carregando...</div>
+                  <div className="center-screen">Carregando...</div>
                 ) : setores.length === 0 ? (
                   <EmptyState title="Nenhum setor" description="Cadastre setores para prosseguir." />
                 ) : (
-                  <div className="request-list" style={{ gap: '8px' }}>
+                  <div className="request-list">
                     {setores.map((s) => (
-                      <div key={s.id} className="request-card" style={{ padding: '10px 12px', gap: '6px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{s.nome}</span>
-                          <span className={`status-pill ${s.ativo ? 'approved' : 'rejected'}`} style={{ fontSize: '0.6rem', padding: '2px 8px' }}>{s.ativo ? 'Ativo' : 'Inativo'}</span>
+                      <div key={s.id} className="request-card setor-card">
+                        <div className="setor-card-header">
+                          <span className="setor-card-name">{s.nome}</span>
+                          <span className={`status-pill ${s.ativo ? 'approved' : 'rejected'}`}>{s.ativo ? 'Ativo' : 'Inativo'}</span>
                         </div>
-                        <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: 'var(--muted)' }}>
+                        <div className="setor-card-meta">
                           <span>ID #{s.id}</span>
                           <span>Gestor: {s.gestor ? s.gestor.nome_completo : '—'}</span>
                           <span>{s.total_membros} membro(s)</span>
@@ -442,27 +442,25 @@ export function AdminPage() {
                 )}
               </section>
 
-              <section className="panel" style={{ padding: '16px', maxHeight: '50vh', overflowY: 'auto' }}>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem', marginBottom: '4px' }}>
-                  <Users size={16} style={{ color: 'var(--primary)' }} />
+              <section className="panel admin-table-section">
+                <h3 className="admin-section-title">
+                  <Users size={16} />
                   Membros do Setor
                 </h3>
-                <p style={{ color: 'var(--muted)', fontSize: '0.75rem', marginBottom: '12px' }}>
+                <p className="admin-section-desc">
                   Selecione um setor para gerenciar vínculos.
                 </p>
-                <div style={{ marginBottom: '12px' }}>
-                  <select value={selectedSetorId ?? ''} onChange={(e) => setSelectedSetorId(e.target.value ? Number(e.target.value) : null)} style={{ fontSize: '0.8rem' }}>
-                    <option value="">Selecione um setor...</option>
-                    {setores.map((s) => (<option key={s.id} value={s.id}>{s.nome} ({s.total_membros})</option>))}
-                  </select>
-                </div>
+                <select value={selectedSetorId ?? ''} onChange={(e) => setSelectedSetorId(e.target.value ? Number(e.target.value) : null)} className="setor-select">
+                  <option value="">Selecione um setor...</option>
+                  {setores.map((s) => (<option key={s.id} value={s.id}>{s.nome} ({s.total_membros})</option>))}
+                </select>
                 {selectedSetorId ? (
                   isMembrosLoading ? (
-                    <div className="center-screen" style={{ minHeight: '60px' }}>Carregando...</div>
+                    <div className="center-screen">Carregando...</div>
                   ) : selectedSetorMembros.length === 0 ? (
                     <EmptyState title="Sem membros" description="Vincule membros pelo formulário ao lado." icon="👥" />
                   ) : (
-                    <div className="table-wrap animate-slide-down" style={{ fontSize: '0.78rem' }}>
+                    <div className="table-wrap">
                       <table>
                         <thead>
                           <tr>
@@ -475,18 +473,18 @@ export function AdminPage() {
                         </thead>
                         <tbody>
                           {selectedSetorMembros.map((m) => (
-                            <tr key={m.profile_id} style={{ opacity: m.ativo ? 1 : 0.5 }}>
-                              <td style={{ fontWeight: 600, fontSize: '0.78rem' }}>{m.nome_completo}</td>
-                              <td style={{ fontSize: '0.75rem' }}>{m.matricula}</td>
-                              <td><span className="badge" style={{ fontSize: '0.6rem' }}>{m.role_setor}</span></td>
-                              <td>{m.ativo ? <BadgeCheck size={14} style={{ color: 'var(--success-strong)', verticalAlign: 'middle' }} /> : <BadgeX size={14} style={{ color: 'var(--danger-strong)', verticalAlign: 'middle' }} />}</td>
-                              <td>
+                            <tr key={m.profile_id} className={m.ativo ? '' : 'inativo'}>
+                              <td className="td-nome" data-label="Nome">{m.nome_completo}</td>
+                              <td data-label="Matrícula">{m.matricula}</td>
+                              <td data-label="Função"><span className="badge">{m.role_setor}</span></td>
+                              <td data-label="Status">{m.ativo ? <BadgeCheck size={14} className="icon-success" /> : <BadgeX size={14} className="icon-danger" />}</td>
+                              <td data-label="Ação">
                                 {m.ativo ? (
-                                  <button type="button" className="danger-button" style={{ padding: '4px 8px', fontSize: '0.7rem', borderRadius: 'var(--radius-sm)' }} onClick={() => handleDesativarMembro(m.profile_id, selectedSetorId)} title="Desativar Vínculo">
+                                  <button type="button" className="danger-button btn-sm" onClick={() => handleDesativarMembro(m.profile_id, selectedSetorId)} title="Desativar Vínculo">
                                     <UserX size={12} />
                                   </button>
                                 ) : (
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontStyle: 'italic' }}>Inativo</span>
+                                  <span className="inativo-label">Inativo</span>
                                 )}
                               </td>
                             </tr>
