@@ -7,7 +7,6 @@ type AuthContextValue = {
   session: Session | null
   profile: Profile | null
   vinculosSetor: VinculoSetor[]
-  /** Gestor operacional = role_setor GESTOR em algum setor ativo (independente de profiles.role) */
   isGestorSetor: boolean
   loading: boolean
   signIn: (matricula: string, password: string) => Promise<{ error: string | null }>
@@ -66,10 +65,6 @@ async function loadUserContext(userId: string) {
   return { profile: fetchedProfile, vinculos }
 }
 
-/**
- * Evita deadlock do Supabase Auth ao recarregar a página: não chamar .from() etc.
- * diretamente dentro do callback síncrono de onAuthStateChange.
- */
 function deferAuthSideEffect(fn: () => void | Promise<void>) {
   setTimeout(() => {
     void fn()
