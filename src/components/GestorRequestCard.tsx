@@ -79,11 +79,11 @@ export function GestorRequestCard({
   const showRevogar = podeGestorRevogar(item.status)
 
   return (
-    <article className="request-card">
+    <article className="request-card gestor-card-item">
       <div className="request-head">
         <div>
-          <h4 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Troca #{item.id}</h4>
-          <span className="request-date" style={{ display: 'block', textAlign: 'left', marginTop: '2px' }}>
+          <h4 className="gestor-card-title">Troca #{item.id}</h4>
+          <span className="request-date gestor-card-date">
             {showFinalizedDate ? 'Finalizada em: ' : 'Criada em: '}
             {item.respondido_em && showFinalizedDate
               ? formatDateTime(item.respondido_em)
@@ -97,13 +97,13 @@ export function GestorRequestCard({
         <div>
           <span>🔴 Requisitante</span>
           <strong>{item.requisitante.nome_completo} ({item.requisitante.matricula})</strong>
-          <span style={{ marginTop: '6px' }}>📅 Plantão Cedido</span>
+          <span className="gestor-plantao-label">📅 Plantão Cedido</span>
           <strong>{formatDate(item.data_requisitante)} · {item.turno_requisitante}</strong>
         </div>
         <div>
           <span>🟢 Cedente</span>
           <strong>{item.cedente.nome_completo} ({item.cedente.matricula})</strong>
-          <span style={{ marginTop: '6px' }}>📅 Plantão Solicitado</span>
+          <span className="gestor-plantao-label">📅 Plantão Solicitado</span>
           <strong>{formatDate(item.data_cedente)} · {item.turno_cedente}</strong>
         </div>
       </div>
@@ -115,7 +115,7 @@ export function GestorRequestCard({
       )}
 
       {item.justificativa_revogacao && (
-        <p className="request-obs" style={{ borderLeftColor: 'var(--warning)' }}>
+        <p className="request-obs gestor-obs-warning">
           <strong>Pedido de revogação:</strong> {item.justificativa_revogacao}
         </p>
       )}
@@ -127,13 +127,12 @@ export function GestorRequestCard({
       )}
 
       {panel === null && (
-        <div className="actions-row" style={{ flexWrap: 'wrap' }}>
+        <div className="actions-row gestor-actions-row">
           {showHomologar && (
             <>
               <button
                 type="button"
-                className="success-button"
-                style={{ flex: 1, minWidth: '140px' }}
+                className="success-button gestor-action-btn"
                 onClick={() => {
                   setAprovar(true)
                   setPanel('homologar')
@@ -143,8 +142,7 @@ export function GestorRequestCard({
               </button>
               <button
                 type="button"
-                className="danger-button"
-                style={{ flex: 1, minWidth: '140px' }}
+                className="danger-button gestor-action-btn"
                 onClick={() => {
                   setAprovar(false)
                   setPanel('homologar')
@@ -158,8 +156,7 @@ export function GestorRequestCard({
             <>
               <button
                 type="button"
-                className="success-button"
-                style={{ flex: 1, minWidth: '140px' }}
+                className="success-button gestor-action-btn"
                 disabled={loading}
                 onClick={() => void submitRevogacaoResponse(true)}
               >
@@ -167,8 +164,7 @@ export function GestorRequestCard({
               </button>
               <button
                 type="button"
-                className="ghost-button"
-                style={{ flex: 1, minWidth: '140px' }}
+                className="ghost-button gestor-action-btn"
                 disabled={loading}
                 onClick={() => void submitRevogacaoResponse(false)}
               >
@@ -179,8 +175,7 @@ export function GestorRequestCard({
           {showRevogar && !showResponderRevogacao && (
             <button
               type="button"
-              className="ghost-button"
-              style={{ flex: 1 }}
+              className="ghost-button gestor-action-btn"
               onClick={() => setPanel('revogar')}
             >
               <Ban size={16} /> Revogar
@@ -258,26 +253,8 @@ function ActionPanel({
   children: ReactNode
 }) {
   return (
-    <div
-      style={{
-        background: 'var(--surface-hover)',
-        border: '1.5px solid var(--border)',
-        borderRadius: 'var(--radius-md)',
-        padding: '16px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-      }}
-    >
-      <h5
-        style={{
-          fontSize: '0.85rem',
-          fontWeight: 700,
-          color: titleColor,
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-        }}
-      >
+    <div className="action-panel">
+      <h5 className="action-panel-title" style={{ color: titleColor }}>
         {title}
       </h5>
       {children}
@@ -285,10 +262,9 @@ function ActionPanel({
       <div className="actions-row">
         <button
           type="button"
-          className={confirmClass}
+          className={`${confirmClass} action-panel-confirm`}
           onClick={onConfirm}
           disabled={loading}
-          style={{ flex: 1 }}
         >
           {loading ? 'Salvando...' : confirmLabel}
         </button>

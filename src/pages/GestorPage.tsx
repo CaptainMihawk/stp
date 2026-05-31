@@ -140,11 +140,11 @@ export function GestorPage() {
       return (
         <div className="request-list">
           {items.map((item) => (
-            <article className="request-card" key={item.id}>
+            <article className="request-card gestor-card-item" key={item.id}>
               <div className="request-head">
                 <div>
-                  <h4 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Troca #{item.id}</h4>
-                  <span className="request-date" style={{ display: 'block', textAlign: 'left', marginTop: '2px' }}>
+                  <h4 className="gestor-card-title">Troca #{item.id}</h4>
+                  <span className="request-date gestor-card-date">
                     Finalizada em:{' '}
                     {item.respondido_em ? formatDateTime(item.respondido_em) : '—'}
                   </span>
@@ -166,7 +166,7 @@ export function GestorPage() {
                 </div>
               </div>
               {item.justificativa_revogacao && (
-                <p className="request-obs" style={{ borderLeftColor: 'var(--warning)' }}>
+                <p className="request-obs gestor-obs-warning">
                   <strong>Revogação:</strong> {item.justificativa_revogacao}
                 </p>
               )}
@@ -189,7 +189,7 @@ export function GestorPage() {
 
   if (isLoading) {
     tabContent = (
-      <div className="center-screen" style={{ minHeight: '100px' }}>
+      <div className="center-screen gestor-loading">
         Carregando solicitações...
       </div>
     )
@@ -218,7 +218,7 @@ export function GestorPage() {
           {listAguardando.map((item) => (
             <div key={item.id}>
               <GestorRequestCard item={item} {...cardProps} />
-              <div className="info-box" style={{ fontSize: '0.8rem', padding: '10px 14px', marginTop: '-8px' }}>
+              <div className="info-box gestor-info-cedente">
                 Aguardando confirmação de <strong>{item.cedente.nome_completo}</strong>.
               </div>
             </div>
@@ -246,42 +246,34 @@ export function GestorPage() {
   return (
     <Layout title="Portal de Gestão & Homologação">
       <div className="grid two-columns">
-        <section className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <ClipboardList size={22} style={{ color: 'var(--primary)' }} />
+        <section className="panel gestor-main-section">
+          <h2 className="gestor-section-title">
+            <ClipboardList size={22} />
             Homologação de Trocas
           </h2>
-          <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+          <p className="gestor-section-desc">
             Homologue trocas, responda pedidos de revogação ou revogue solicitações ativas do setor.
           </p>
 
           <Tabs options={tabOptions} activeTab={activeTab} onChange={setActiveTab} />
 
-          <div
-            style={{
-              marginTop: '20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '20px',
-              flexGrow: 1,
-            }}
-          >
+          <div className="gestor-tab-content">
             {tabContent}
           </div>
         </section>
 
-        <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <section className="panel gestor-audit-section">
           <div>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <History size={20} style={{ color: 'var(--primary)' }} />
+            <h2 className="gestor-section-title">
+              <History size={20} />
               Auditoria de Escala
             </h2>
-            <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: '4px 0 16px' }}>
+            <p className="gestor-section-desc">
               Cancelamentos e revogações também ficam registrados com carimbo de data/hora.
             </p>
-            <div className="info-box" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <Clock size={28} style={{ flexShrink: 0 }} />
-              <div style={{ fontSize: '0.78rem' }}>
+            <div className="info-box gestor-audit-box">
+              <Clock size={28} />
+              <div>
                 Atualizações em tempo real. Pedidos de revogação exigem sua decisão na aba dedicada.
               </div>
             </div>
