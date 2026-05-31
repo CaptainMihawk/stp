@@ -4,7 +4,6 @@ import { Layout } from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { isStatusTerminal } from '../lib/solicitacaoRules'
-import { PasswordPanel } from './PasswordPanel'
 import { Tabs, type TabOption } from '../components/Tabs'
 import { EmptyState } from '../components/EmptyState'
 import { GestorRequestCard } from '../components/GestorRequestCard'
@@ -14,13 +13,6 @@ import * as solicitacoesService from '../services/solicitacoesService'
 export function GestorPage() {
   const { profile } = useAuth()
 
-  const tabOptions: TabOption[] = [
-    { id: 'pendentes', label: 'Homologação', icon: '📝' },
-    { id: 'revogacao', label: 'Pedidos de Revogação', icon: '🔄' },
-    { id: 'aguardando', label: 'Aguardando Cedente', icon: '⏳' },
-    { id: 'aprovadas', label: 'Aprovadas', icon: '✅' },
-    { id: 'historico', label: 'Histórico', icon: '📜' },
-  ]
   const [activeTab, setActiveTab] = useState<string>('pendentes')
 
   const [solicitacoes, setSolicitacoes] = useState<solicitacoesService.SolicitacaoListItem[]>([])
@@ -67,6 +59,16 @@ export function GestorPage() {
   const listAguardando = solicitacoes.filter((s) => s.status === 'aguardando_cedente')
   const listAprovadas = solicitacoes.filter((s) => s.status === 'aprovado')
   const listHistorico = solicitacoes.filter((s) => isStatusTerminal(s.status))
+
+  // Badges for Gestor tabs — homologação mostra total que precisa de ação
+  const totalPendentesAcao = listPendentes.length + listRevogacao.length
+  const tabOptions: TabOption[] = [
+    { id: 'pendentes', label: 'Homologação', icon: '📝', badge: totalPendentesAcao },
+    { id: 'revogacao', label: 'Pedidos de Revogação', icon: '🔄', badge: listRevogacao.length },
+    { id: 'aguardando', label: 'Aguardando Cedente', icon: '⏳', badge: listAguardando.length },
+    { id: 'aprovadas', label: 'Aprovadas', icon: '✅' },
+    { id: 'historico', label: 'Histórico', icon: '📜' },
+  ]
 
   async function withLoading<T>(id: number, fn: () => Promise<T>) {
     setActionLoadingId(id)
@@ -284,7 +286,6 @@ export function GestorPage() {
               </div>
             </div>
           </div>
-          <PasswordPanel />
         </section>
       </div>
     </Layout>
