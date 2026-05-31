@@ -4,6 +4,7 @@ export interface TabOption {
   id: string
   label: string
   icon?: string
+  badge?: number
 }
 
 interface TabsProps {
@@ -24,6 +25,9 @@ export const Tabs: React.FC<TabsProps> = ({ options, activeTab, onChange }) => {
         >
           {option.icon && <span>{option.icon}</span>}
           {option.label}
+          {option.badge !== undefined && option.badge > 0 && (
+            <span className="notification-badge">{option.badge}</span>
+          )}
         </button>
       ))}
     </div>

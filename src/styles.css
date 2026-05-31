@@ -787,6 +787,22 @@ button:disabled {
   color: var(--text);
 }
 
+.notification-badge {
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: var(--font-body);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 /* --- Solicitation Card Esthetics --- */
 .request-list {
   display: grid;
