@@ -29,11 +29,7 @@ export function podeSolicitarRevogacao(
   isCedente: boolean,
 ) {
   if (isRequisitante) {
-    return (
-      status === 'aguardando_cedente' ||
-      status === 'pendente' ||
-      status === 'aprovado'
-    )
+    return status === 'aguardando_cedente' || status === 'pendente' || status === 'aprovado'
   }
   if (isCedente) {
     return status === 'pendente' || status === 'aprovado'

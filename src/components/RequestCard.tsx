@@ -35,17 +35,18 @@ export const RequestCard: React.FC<RequestCardProps> = ({
   const isRequisitante = participantId(item.requisitante) === currentUserId
   const isCedente = participantId(item.cedente) === currentUserId
 
-  const showCancel = onCancel && podeCancelar(item.status, isRequisitante)
+  const effectiveIsRequisitante = isRequisitante || (!!onCancel && !onAccept && !onReject)
+  const effectiveIsCedente = isCedente || (!!onAccept && !!onReject && !onCancel)
+
+  const showCancel = onCancel && podeCancelar(item.status, effectiveIsRequisitante)
   const showRevogacao =
     onRequestRevogation &&
-    podeSolicitarRevogacao(item.status, isRequisitante, isCedente)
+    podeSolicitarRevogacao(item.status, effectiveIsRequisitante, effectiveIsCedente)
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '—'
     const parts = dateStr.split('-')
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`
-    }
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
     return dateStr
   }
 
@@ -83,177 +84,110 @@ export const RequestCard: React.FC<RequestCardProps> = ({
     <article className="request-card">
       <div className="request-head">
         <div>
-          <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            Troca #{item.id}
-          </h4>
-          <span className="request-date" style={{ display: 'block', textAlign: 'left', marginTop: '2px' }}>
-            Criada em: {formatDateTime(item.criado_em)}
-          </span>
+          <h4>Troca #{item.id}</h4>
+          <span className="request-date">{formatDateTime(item.criado_em)}</span>
         </div>
         <StatusPill status={item.status} />
       </div>
 
       <div className="request-details">
         <div>
-          <span>🔴 Requisitante (Quem pede)</span>
-          <strong>{item.requisitante.nome_completo} ({item.requisitante.matricula})</strong>
-          <span style={{ marginTop: '6px' }}>📅 Plantão Cedido</span>
-          <strong>{formatDate(item.data_requisitante)} · {item.turno_requisitante}</strong>
+          <span>🔴 {item.requisitante.nome_completo}</span>
+          <small>{item.requisitante.matricula}</small>
+          <strong>📅 {formatDate(item.data_requisitante)} · {item.turno_requisitante}</strong>
         </div>
-
         <div>
-          <span>🟢 Cedente (Quem recebe)</span>
-          <strong>{item.cedente.nome_completo} ({item.cedente.matricula})</strong>
-          <span style={{ marginTop: '6px' }}>📅 Plantão Solicitado</span>
-          <strong>{formatDate(item.data_cedente)} · {item.turno_cedente}</strong>
+          <span>🟢 {item.cedente.nome_completo}</span>
+          <small>{item.cedente.matricula}</small>
+          <strong>📅 {formatDate(item.data_cedente)} · {item.turno_cedente}</strong>
         </div>
       </div>
 
       {item.observacao && (
         <p className="request-obs">
-          <strong>Observação:</strong> {item.observacao}
+          <strong>Obs:</strong> {item.observacao}
         </p>
-      )}
-
-      {item.justificativa_revogacao && (
-        <p className="request-obs" style={{ borderLeftColor: 'var(--warning)' }}>
-          <strong>Justificativa de revogação:</strong> {item.justificativa_revogacao}
-        </p>
-      )}
-
-      {item.gestor_responsavel && (
-        <div style={{ fontSize: '0.8rem', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span>👤 Gestor Responsável: <strong>{item.gestor_responsavel.nome_completo}</strong></span>
-        </div>
       )}
 
       {item.replica_gestor && (
         <p className={`request-reply ${item.status === 'recusado_gestor' ? 'rejected' : ''}`}>
-          <strong>Resposta do Gestor:</strong> {item.replica_gestor}
+          <strong>Gestor:</strong> {item.replica_gestor}
         </p>
       )}
 
-      {isCedente && item.status === 'aguardando_cedente' && (onAccept || onReject) && (
+      {/* Cedente: aceitar/recusar enquanto aguarda cedente */}
+      {effectiveIsCedente && item.status === 'aguardando_cedente' && (onAccept || onReject) && (
         <div className="actions-row">
-          <button
-            type="button"
-            className="success-button"
-            style={{ flex: 1 }}
-            onClick={() => onAccept?.(item.id)}
-            disabled={isActionLoading}
-          >
-            {isActionLoading ? 'Processando...' : 'Aceitar Troca'}
+          <button type="button" className="success-button" style={{ flex: 1 }}
+            onClick={() => onAccept?.(item.id)} disabled={isActionLoading}>
+            {isActionLoading ? '…' : 'Aceitar'}
           </button>
-          <button
-            type="button"
-            className="danger-button"
-            style={{ flex: 1 }}
-            onClick={() => onReject?.(item.id)}
-            disabled={isActionLoading}
-          >
-            {isActionLoading ? 'Processando...' : 'Recusar Troca'}
+          <button type="button" className="danger-button" style={{ flex: 1 }}
+            onClick={() => onReject?.(item.id)} disabled={isActionLoading}>
+            {isActionLoading ? '…' : 'Recusar'}
           </button>
         </div>
       )}
 
+      {/* Requisitante: cancelar (só aguardando_cedente) ou revogar (pendente/aprovado) */}
       {(showCancel || showRevogacao) && !revogacaoOpen && (
         <div className="actions-row">
           {showCancel && (
-            <button
-              type="button"
-              className="ghost-button"
-              style={{ flex: 1 }}
+            <button type="button" className="ghost-button" style={{ flex: 1 }}
               disabled={isActionLoading}
               onClick={() => {
-                if (window.confirm('Cancelar esta solicitação antes da resposta do cedente?')) {
-                  void onCancel?.(item.id)
-                }
-              }}
-            >
-              {isActionLoading ? 'Processando...' : 'Cancelar solicitação'}
+                if (window.confirm('Cancelar esta solicitação?')) void onCancel?.(item.id)
+              }}>
+              {isActionLoading ? '…' : 'Cancelar'}
             </button>
           )}
           {showRevogacao && (
-            <button
-              type="button"
-              className="ghost-button"
-              style={{ flex: 1 }}
+            <button type="button" className="ghost-button" style={{ flex: 1 }}
               disabled={isActionLoading}
-              onClick={() => {
-                setRevogacaoOpen(true)
-                setLocalError(null)
-              }}
-            >
+              onClick={() => { setRevogacaoOpen(true); setLocalError(null) }}>
               Solicitar revogação
             </button>
           )}
         </div>
       )}
 
+      {/* Formulário de revogação */}
       {revogacaoOpen && showRevogacao && (
-        <div
-          style={{
-            background: 'var(--surface-hover)',
-            border: '1.5px solid var(--border)',
-            borderRadius: 'var(--radius-md)',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}
-        >
+        <div className="revogacao-form">
           <label>
             Justificativa (obrigatória)
-            <textarea
-              value={justificativa}
+            <textarea value={justificativa}
               onChange={(e) => setJustificativa(e.target.value)}
-              placeholder="Descreva o motivo da revogação..."
-              rows={2}
-              required
-            />
+              placeholder="Descreva o motivo da revogação..." rows={2} required />
           </label>
           {localError && <div className="error-box">{localError}</div>}
           <div className="actions-row">
-            <button
-              type="button"
-              className="danger-button"
-              style={{ flex: 1 }}
-              disabled={isActionLoading}
-              onClick={() => void handleRevogacaoSubmit()}
-            >
-              {isActionLoading ? 'Enviando...' : 'Enviar pedido de revogação'}
+            <button type="button" className="danger-button" style={{ flex: 1 }}
+              disabled={isActionLoading} onClick={() => void handleRevogacaoSubmit()}>
+              {isActionLoading ? '…' : 'Confirmar revogação'}
             </button>
-            <button
-              type="button"
-              className="ghost-button"
+            <button type="button" className="ghost-button"
               disabled={isActionLoading}
-              onClick={() => {
-                setRevogacaoOpen(false)
-                setJustificativa('')
-                setLocalError(null)
-              }}
-            >
+              onClick={() => { setRevogacaoOpen(false); setJustificativa(''); setLocalError(null) }}>
               Voltar
             </button>
           </div>
         </div>
       )}
 
-      {isRequisitante && item.status === 'aguardando_cedente' && !showCancel && (
-        <div className="info-box" style={{ fontSize: '0.825rem' }}>
-          ⏳ Aguardando que <strong>{item.cedente.nome_completo}</strong> aceite sua proposta de troca.
-        </div>
+      {/* Mensagens de status */}
+      {effectiveIsRequisitante && item.status === 'aguardando_cedente' && !showCancel && (
+        <div className="info-box">⏳ Aguardando {item.cedente.nome_completo} aceitar.</div>
       )}
-
-      {isRequisitante && item.status === 'pendente' && (
-        <div className="info-box" style={{ fontSize: '0.825rem' }}>
-          ⏳ Aceita pelo cedente! Aguardando homologação do gestor do setor.
-        </div>
+      {effectiveIsRequisitante && item.status === 'pendente' && (
+        <div className="info-box">⏳ Aguardando homologação do gestor.</div>
       )}
-
       {item.status === 'pedido_revogacao' && (
-        <div className="info-box" style={{ fontSize: '0.825rem' }}>
-          ⏳ Aguardando decisão do gestor sobre o pedido de revogação.
+        <div className="info-box">⏳ Aguardando decisão do gestor sobre revogação.</div>
+      )}
+      {item.status === 'revogado' && (
+        <div className="info-box" style={{ borderLeftColor: 'var(--danger)' }}>
+          ❌ Solicitação revogada pelo gestor.
         </div>
       )}
     </article>
