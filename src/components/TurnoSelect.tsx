@@ -29,6 +29,9 @@ export const TurnoSelect: React.FC<TurnoSelectProps> = ({
   // Get active turn metadata
   const activeTurnMeta = TURNOS.find(t => t.sigla === turnoValue)
 
+  // Data mínima = hoje (impede selecionar datas passadas)
+  const todayStr = new Date().toISOString().split('T')[0]
+
   return (
     <>
       <label className="form-section-label">{label}</label>
@@ -39,6 +42,7 @@ export const TurnoSelect: React.FC<TurnoSelectProps> = ({
           <input
             type="date"
             required
+            min={todayStr}
             value={dateValue}
             onChange={(e) => onDateChange(e.target.value)}
           />
