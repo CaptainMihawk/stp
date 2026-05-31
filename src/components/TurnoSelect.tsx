@@ -36,7 +36,7 @@ export const TurnoSelect: React.FC<TurnoSelectProps> = ({
     <>
       <label className="form-section-label">{label}</label>
       
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      <div className="turno-select-grid">
         <label>
           Data do Plantão
           <input

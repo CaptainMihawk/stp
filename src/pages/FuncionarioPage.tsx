@@ -299,17 +299,17 @@ export function FuncionarioPage() {
     <Layout title="Portal do Funcionário">
       <div className="grid two-columns">
         {/* Left Side: Create Exchange Form */}
-        <section className="panel" style={{ height: 'fit-content' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', fontSize: '1.1rem' }}>
-            <ArrowLeftRight size={20} style={{ color: 'var(--primary)' }} />
+        <section className="panel funcionario-form-section">
+          <h2 className="funcionario-section-title">
+            <ArrowLeftRight size={20} />
             Propor Nova Troca
           </h2>
-          <p style={{ color: 'var(--muted)', fontSize: '0.8rem', marginBottom: '16px' }}>
+          <p className="funcionario-section-desc">
             Preencha os dados e escolha um colega do mesmo setor.
           </p>
 
-          <form className="form-grid" onSubmit={handleSubmit} style={{ gap: '12px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <form className="form-grid" onSubmit={handleSubmit}>
+            <div className="funcionario-selectores-row">
               <SearchableSelect
                 label="Seu Setor Ativo"
                 value={selectedSetorId}
@@ -341,7 +341,7 @@ export function FuncionarioPage() {
             </div>
 
             {/* Requisitante Shift block */}
-            <div className="plantao-block full-width" style={{ padding: '12px' }}>
+            <div className="plantao-block full-width">
               <TurnoSelect
                 label="Seu Plantão (que você vai CEDER)"
                 dateValue={meuPlantao.data}
@@ -352,7 +352,7 @@ export function FuncionarioPage() {
             </div>
 
             {/* Cedente Shift block with compatibility constraints */}
-            <div className="plantao-block full-width" style={{ padding: '12px' }}>
+            <div className="plantao-block full-width">
               <TurnoSelect
                 label="Plantão do Colega (que você quer RECEBER)"
                 dateValue={plantaoDestino.data}
@@ -363,7 +363,7 @@ export function FuncionarioPage() {
               />
             </div>
 
-            <label className="full-width" style={{ fontSize: '0.85rem' }}>
+            <label className="full-width funcionario-obs-label">
               Observação (opcional)
               <textarea
                 rows={2}
@@ -373,20 +373,20 @@ export function FuncionarioPage() {
               />
             </label>
 
-            {formError && <div className="error-box" style={{ fontSize: '0.8rem', padding: '8px 12px' }}>{formError}</div>}
-            {formSuccess && <div className="info-box" style={{ fontSize: '0.8rem', padding: '8px 12px' }}>{formSuccess}</div>}
+            {formError && <div className="error-box">{formError}</div>}
+            {formSuccess && <div className="info-box">{formSuccess}</div>}
 
-            <button className="primary-button full-width" disabled={isSubmiting} style={{ padding: '10px' }}>
+            <button className="primary-button full-width" disabled={isSubmiting}>
               {isSubmiting ? 'Enviando...' : 'Enviar Proposta'}
             </button>
           </form>
         </section>
 
         {/* Right Side: Solicitations list (with tabs) */}
-        <section className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileText size={22} style={{ color: 'var(--primary)' }} />
+        <section className="panel funcionario-list-section">
+          <div className="funcionario-list-header">
+            <h2 className="funcionario-section-title">
+              <FileText size={22} />
               Fluxo de Trocas
             </h2>
             <div className="month-navigator">
@@ -412,9 +412,9 @@ export function FuncionarioPage() {
             onChange={setActiveTab}
           />
 
-          <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px', flexGrow: 1 }}>
+          <div className="funcionario-list-body">
             {isLoadingList ? (
-              <div className="center-screen" style={{ minHeight: '100px' }}>Carregando solicitações...</div>
+              <div className="center-screen">Carregando solicitações...</div>
             ) : activeTab === 'minhas' ? (
               filteredMinhas.length === 0 ? (
                 <EmptyState
