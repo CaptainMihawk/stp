@@ -1,14 +1,37 @@
-import React from 'react'
-import { LogOut, Sun, Moon, UserCircle2 } from 'lucide-react'
+import React, { useState } from 'react'
+import { LogOut, Sun, Moon, UserCircle2, KeyRound, ShieldAlert } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { usePortalView } from '../contexts/PortalViewContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { SessionExpiryHint } from './SessionExpiryHint'
 
 export const Sidebar: React.FC = () => {
-  const { profile, signOut, isGestorSetor } = useAuth()
+  const { profile, signOut, isGestorSetor, updatePassword } = useAuth()
   const portalView = usePortalView()
   const { theme, toggleTheme } = useTheme()
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [passwordStatus, setPasswordStatus] = useState<{ text: string; error: boolean } | null>(null)
+  const [passwordPending, setPasswordPending] = useState(false)
+
+  async function handlePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (newPassword.length < 6) {
+      setPasswordStatus({ text: 'Mínimo 6 caracteres.', error: true })
+      return
+    }
+    setPasswordPending(true)
+    setPasswordStatus(null)
+    const result = await updatePassword(newPassword)
+    setPasswordPending(false)
+    if (result.error) {
+      setPasswordStatus({ text: result.error, error: true })
+    } else {
+      setPasswordStatus({ text: 'Senha atualizada!', error: false })
+      setNewPassword('')
+      setTimeout(() => setShowPasswordForm(false), 1500)
+    }
+  }
 
   return (
     <aside className="sidebar">
@@ -38,6 +61,31 @@ export const Sidebar: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {showPasswordForm && (
+          <form className="sidebar-password-form" onSubmit={handlePasswordSubmit}>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Nova senha (mín. 6 caracteres)"
+              autoFocus
+            />
+            {newPassword && newPassword.length < 6 && (
+              <span style={{ fontSize: '0.7rem', color: 'var(--danger-strong)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <ShieldAlert size={12} /> Mínimo 6 caracteres
+              </span>
+            )}
+            {passwordStatus && (
+              <span style={{ fontSize: '0.7rem', color: passwordStatus.error ? 'var(--danger-strong)' : 'var(--success-strong)' }}>
+                {passwordStatus.text}
+              </span>
+            )}
+            <button type="submit" className="primary-button" disabled={passwordPending || newPassword.length < 6} style={{ fontSize: '0.75rem', padding: '6px 12px', width: '100%' }}>
+              {passwordPending ? 'Salvando...' : 'Atualizar Senha'}
+            </button>
+          </form>
+        )}
 
         {isGestorSetor && portalView && (
           <div
@@ -71,22 +119,26 @@ export const Sidebar: React.FC = () => {
         )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <SessionExpiryHint />
-
-        <div className="theme-toggle-container">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="sidebar-actions-row">
           <button
             type="button"
             className="theme-toggle-btn"
             onClick={toggleTheme}
-            title={theme === 'dark' ? 'Ativar Modo Claro' : 'Ativar Modo Escuro'}
+            title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
             aria-label="Alternar tema"
           >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
           </button>
-          <span className="theme-toggle-label">
-            Modo {theme === 'dark' ? 'Escuro' : 'Claro'}
-          </span>
+          <button
+            type="button"
+            className="sidebar-password-btn"
+            onClick={() => { setShowPasswordForm(v => !v); setPasswordStatus(null); setNewPassword('') }}
+            title="Alterar senha"
+            aria-label="Alterar senha"
+          >
+            <KeyRound size={15} />
+          </button>
         </div>
 
         <button
@@ -96,6 +148,8 @@ export const Sidebar: React.FC = () => {
         >
           <LogOut size={18} /> Sair
         </button>
+
+        <SessionExpiryHint />
       </div>
     </aside>
   )
