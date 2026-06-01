@@ -63,3 +63,76 @@ export interface CreateUserResponse {
 export async function createUser(data: CreateUserPayload): Promise<CreateUserResponse> {
   return callEdgeFunction<CreateUserResponse>('create-user', data as unknown as Record<string, unknown>)
 }
+
+// ---------------------------------------------------------------------------
+// Admin — /functions/v1/admin
+// ---------------------------------------------------------------------------
+
+export interface AdminUsuario {
+  id: string
+  nome_completo: string
+  matricula: string
+  role: 'ADMIN' | 'FUNCIONARIO' | 'GESTOR'
+  ativo: boolean
+  email: string
+  ultimo_login: string | null
+  criado_em: string
+}
+
+export async function listarUsuarios(): Promise<AdminUsuario[]> {
+  return callEdgeFunction('admin', { action: 'listar_usuarios' })
+}
+
+export interface ResetarSenhaPayload {
+  profile_id: string
+  nova_senha: string
+}
+
+export async function resetarSenha(
+  data: ResetarSenhaPayload,
+): Promise<{ success: boolean }> {
+  return callEdgeFunction('admin', {
+    action: 'resetar_senha',
+    ...data,
+  })
+}
+
+export async function ativarUsuario(
+  profile_id: string,
+): Promise<{ profile_id: string; ativo: boolean }> {
+  return callEdgeFunction('admin', {
+    action: 'ativar_usuario',
+    profile_id,
+  })
+}
+
+export async function desativarUsuario(
+  profile_id: string,
+): Promise<{ profile_id: string; ativo: boolean }> {
+  return callEdgeFunction('admin', {
+    action: 'desativar_usuario',
+    profile_id,
+  })
+}
+
+export interface Configuracao {
+  chave: string
+  valor: string
+  descricao: string
+  atualizado_em: string
+}
+
+export async function listarConfiguracoes(): Promise<Configuracao[]> {
+  return callEdgeFunction('admin', { action: 'listar_configuracoes' })
+}
+
+export async function atualizarConfiguracao(
+  chave: string,
+  valor: string,
+): Promise<{ chave: string; valor: string; atualizado_em: string }> {
+  return callEdgeFunction('admin', {
+    action: 'atualizar_configuracao',
+    chave,
+    valor,
+  })
+}

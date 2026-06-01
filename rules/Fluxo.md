@@ -322,6 +322,87 @@ ou
 }
 ```
 
+## listar_meus_dados
+
+**Quem pode usar:** usuário autenticado
+
+**Body**
+
+```json
+{
+  "action": "listar_meus_dados"
+}
+```
+
+**Regras de negócio**
+
+- Retorna o profile do usuário logado e seus vínculos ativos em setores.
+- Vínculos inativos não são retornados.
+
+**Response 200**
+
+```json
+{
+  "profile": {
+    "id": "uuid",
+    "matricula": "MAT001",
+    "nome_completo": "João Silva",
+    "role": "FUNCIONARIO",
+    "ativo": true,
+    "criado_em": "2026-05-01T00:00:00Z"
+  },
+  "vinculos": [{
+    "setor_id": 1,
+    "role_setor": "MEMBRO",
+    "ativo": true,
+    "setor": { "id": 1, "nome": "UTI" }
+  }]
+}
+```
+
+
+## listar_solicitacoes_gestor
+
+**Quem pode usar:** gestor responsável
+
+**Body**
+
+```json
+{
+  "action": "listar_solicitacoes_gestor"
+}
+```
+
+**Regras de negócio**
+
+- Retorna todas as solicitações onde o usuário logado é o `gestor_responsavel_id`.
+- Sem filtro de status — retorna todos os estados (ativo, encerrado, revogado).
+- Ordenado por `criado_em` decrescente.
+- Inclui `aprovacao`, `replica_gestor` e `respondido_em`.
+
+**Response 200**
+
+```json
+[{
+  "id": 42,
+  "status": "aprovado",
+  "requisitante": { "nome_completo": "...", "matricula": "..." },
+  "cedente": { "nome_completo": "...", "matricula": "..." },
+  "setor": { "id": 1, "nome": "UTI" },
+  "observacao": "...",
+  "data_requisitante": "2026-06-01",
+  "turno_requisitante": "SD",
+  "data_cedente": "2026-06-03",
+  "turno_cedente": "SN",
+  "justificativa_revogacao": null,
+  "aprovacao": true,
+  "replica_gestor": null,
+  "respondido_em": "2026-06-01T12:00:00Z",
+  "criado_em": "2026-05-28T21:00:00Z"
+}]
+```
+
+
 ---
 # Setores
 Endpoint: /functions/v1/setores

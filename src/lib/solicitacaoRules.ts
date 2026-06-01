@@ -9,10 +9,12 @@ const STATUS_TERMINAIS: StatusSolicitacao[] = [
 
 /**
  * Status em que o gestor pode usar revogar_solicitacao.
- * Exclui 'aguardando_cedente' e 'pendente' porque nesses status
- * o gestor já pode recusar via homologação — não faz sentido ter ambas.
+ * Conforme Fluxo.md: qualquer status ativo (aguardando_cedente, pendente,
+ * aprovado, pedido_revogacao).
  */
 const STATUS_GESTOR_REVOGAR: StatusSolicitacao[] = [
+  'aguardando_cedente',
+  'pendente',
   'aprovado',
   'pedido_revogacao',
 ]

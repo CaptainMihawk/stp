@@ -529,6 +529,137 @@ button:disabled {
   box-shadow: none !important;
 }
 
+/* --- Admin Filters Row --- */
+.admin-filters-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-search-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 0.875rem;
+}
+
+.admin-search-input:focus {
+  outline: none;
+  border-color: var(--primary-strong);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.admin-role-filter {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+/* --- Admin Actions Cell --- */
+.admin-actions-cell {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.admin-actions-cell .ghost-button {
+  padding: 4px 6px;
+  font-size: 0.8rem;
+}
+
+/* --- Modal --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal-content {
+  background: var(--bg-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-title {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.modal-desc {
+  margin: 0 0 20px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.modal-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.modal-form input {
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.modal-form input:focus {
+  outline: none;
+  border-color: var(--primary-strong);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* --- Config Table --- */
+.config-edit-input {
+  width: 80px;
+  padding: 4px 8px;
+  border: 1px solid var(--primary-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.config-edit-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.config-valor {
+  font-weight: 600;
+}
+
 /* --- Feedback Info/Error Boxes --- */
 .info-box, .error-box {
   padding: 14px 16px;
@@ -557,6 +688,21 @@ button:disabled {
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Monthly Limit Indicator --- */
+.limite-mes {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  justify-content: center;
+  text-align: center;
+}
+
+.limite-mes.limite-atingido {
+  background: var(--danger-soft);
+  color: var(--danger-strong);
+  border-color: rgba(239, 68, 68, 0.2);
+  font-weight: 600;
 }
 
 /* ==========================================================================

@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, AUTH_DOMAIN } from '../lib/supabase'
-import type { Profile, RoleSetor, VinculoSetor } from '../lib/types'
+import type { Profile, VinculoSetor } from '../lib/types'
+import { listarMeusDados } from '../services/solicitacoesService'
 
 type AuthContextValue = {
   session: Session | null
@@ -19,50 +20,14 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 10_000
 
-async function loadProfile(userId: string) {
-  try {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
-    if (error) {
-      console.error('Erro ao buscar perfil:', error)
-      return null
-    }
-    return data ?? null
-  } catch (err) {
-    console.error('Exceção ao buscar perfil do usuário:', err)
-    return null
-  }
-}
-
-async function loadVinculosSetor(userId: string): Promise<VinculoSetor[]> {
-  try {
-    const { data, error } = await supabase
-      .from('profiles_setores')
-      .select('setor_id, role_setor, ativo')
-      .eq('profile_id', userId)
-      .eq('ativo', true)
-
-    if (error) {
-      console.error('Erro ao buscar vínculos de setor:', error)
-      return []
-    }
-
-    return (data ?? []).map((row) => ({
-      setor_id: row.setor_id as number,
-      role_setor: row.role_setor as RoleSetor,
-      ativo: row.ativo as boolean,
-    }))
-  } catch (err) {
-    console.error('Exceção ao buscar vínculos de setor:', err)
-    return []
-  }
-}
-
 async function loadUserContext(userId: string) {
-  const [fetchedProfile, vinculos] = await Promise.all([
-    loadProfile(userId),
-    loadVinculosSetor(userId),
-  ])
-  return { profile: fetchedProfile, vinculos }
+  try {
+    const data = await listarMeusDados()
+    return { profile: data.profile, vinculos: data.vinculos }
+  } catch (err) {
+    console.error('Erro ao carregar dados do usuário via Edge Function:', err)
+    return { profile: null, vinculos: [] }
+  }
 }
 
 function deferAuthSideEffect(fn: () => void | Promise<void>) {

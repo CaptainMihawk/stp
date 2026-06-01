@@ -23,7 +23,7 @@ export function GestorPage() {
     if (!profile?.id) return
     setIsLoading(true)
     try {
-      const data = await solicitacoesService.listarSolicitacoesComoGestor(profile.id)
+      const data = await solicitacoesService.listarSolicitacoesComoGestor()
       // Ordena da mais nova para a mais antiga
       data.sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
       setSolicitacoes(data)

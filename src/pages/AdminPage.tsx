@@ -3,27 +3,45 @@ import { Layout } from '../components/Layout'
 import { Tabs, type TabOption } from '../components/Tabs'
 import { EmptyState } from '../components/EmptyState'
 import { SearchableSelect } from '../components/SearchableSelect'
-import { supabase } from '../lib/supabase'
-import type { Profile, Role, RoleSetor } from '../lib/types'
+import { useAuth } from '../contexts/AuthContext'
+import type { Role, RoleSetor } from '../lib/types'
 import * as adminService from '../services/adminService'
 import * as setoresService from '../services/setoresService'
 import {
   UserPlus, FolderPlus, Link, Users, Folder, UserX,
   Hash, User, Key, Building2, BadgeCheck, BadgeX,
+  Shield, ShieldOff, Lock,
 } from 'lucide-react'
 
 export function AdminPage() {
+  const { profile: adminProfile } = useAuth()
   const tabOptions: TabOption[] = [
     { id: 'usuarios', label: 'Usuários', icon: '👤' },
     { id: 'setores', label: 'Setores & Vínculos', icon: '🏢' },
+    { id: 'configuracoes', label: 'Configurações', icon: '⚙️' },
   ]
   const [activeTab, setActiveTab] = useState<string>('usuarios')
 
   // Core Data States
-  const [users, setUsers] = useState<Profile[]>([])
+  const [users, setUsers] = useState<adminService.AdminUsuario[]>([])
   const [setores, setSetores] = useState<setoresService.SetorListItem[]>([])
   const [selectedSetorId, setSelectedSetorId] = useState<number | null>(null)
   const [selectedSetorMembros, setSelectedSetorMembros] = useState<setoresService.MembroSetor[]>([])
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState('')
+  const [roleFilter, setRoleFilter] = useState<string>('todas')
+
+  // Reset password modal
+  const [resetPasswordTarget, setResetPasswordTarget] = useState<{ id: string; nome: string } | null>(null)
+  const [resetPasswordValue, setResetPasswordValue] = useState('')
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+
+  // Configurações
+  const [configuracoes, setConfiguracoes] = useState<adminService.Configuracao[]>([])
+  const [isConfigLoading, setIsConfigLoading] = useState(false)
+  const [editConfigChave, setEditConfigChave] = useState<string | null>(null)
+  const [editConfigValor, setEditConfigValor] = useState('')
 
   // Form inputs
   const [userForm, setUserForm] = useState<adminService.CreateUserPayload>({
@@ -51,16 +69,12 @@ export function AdminPage() {
   // Status Alerts
   const [alertMessage, setAlertMessage] = useState<{ text: string; error: boolean } | null>(null)
 
-  // Load users list
+  // Load users list via Edge Function
   async function loadUsers() {
     setIsUsersLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('criado_em', { ascending: false })
-      if (error) throw error
-      setUsers(data ?? [])
+      const data = await adminService.listarUsuarios()
+      setUsers(data)
     } catch (err) {
       console.error('Erro ao carregar usuários:', err)
     } finally {
@@ -68,7 +82,67 @@ export function AdminPage() {
     }
   }
 
-  // Load sectors list
+  // Filtered users based on search + role filter
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      const matchSearch =
+        !searchTerm ||
+        u.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.matricula.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchRole = roleFilter === 'todas' || u.role === roleFilter
+      return matchSearch && matchRole
+    })
+  }, [users, searchTerm, roleFilter])
+
+  // --- Admin user actions ---
+
+  async function handleAtivarUsuario(profileId: string) {
+    setActionLoadingId(profileId)
+    try {
+      await adminService.ativarUsuario(profileId)
+      setAlertMessage({ text: 'Usuário ativado com sucesso.', error: false })
+      void loadUsers()
+    } catch (err) {
+      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao ativar usuário.', error: true })
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  async function handleDesativarUsuario(profileId: string) {
+    if (!window.confirm('Tem certeza de que deseja desativar este usuário? O histórico de solicitações será preservado.')) return
+    setActionLoadingId(profileId)
+    try {
+      await adminService.desativarUsuario(profileId)
+      setAlertMessage({ text: 'Usuário desativado com sucesso.', error: false })
+      void loadUsers()
+    } catch (err) {
+      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao desativar usuário.', error: true })
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  async function handleResetarSenha() {
+    if (!resetPasswordTarget || resetPasswordValue.length < 8) {
+      setAlertMessage({ text: 'A senha deve ter no mínimo 8 caracteres.', error: true })
+      return
+    }
+    setActionLoadingId(resetPasswordTarget.id)
+    try {
+      await adminService.resetarSenha({
+        profile_id: resetPasswordTarget.id,
+        nova_senha: resetPasswordValue,
+      })
+      setAlertMessage({ text: `Senha de ${resetPasswordTarget.nome} redefinida com sucesso.`, error: false })
+      setResetPasswordTarget(null)
+      setResetPasswordValue('')
+    } catch (err) {
+      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao resetar senha.', error: true })
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
   async function loadSetores() {
     setIsSetoresLoading(true)
     try {
@@ -78,6 +152,35 @@ export function AdminPage() {
       console.error('Erro ao carregar setores:', err)
     } finally {
       setIsSetoresLoading(false)
+    }
+  }
+
+  // Load configurações
+  async function loadConfiguracoes() {
+    setIsConfigLoading(true)
+    try {
+      const data = await adminService.listarConfiguracoes()
+      setConfiguracoes(data)
+    } catch (err) {
+      console.error('Erro ao carregar configurações:', err)
+    } finally {
+      setIsConfigLoading(false)
+    }
+  }
+
+  async function handleAtualizarConfig(chave: string) {
+    if (!editConfigValor.trim()) return
+    setActionLoadingId(`config-${chave}`)
+    try {
+      await adminService.atualizarConfiguracao(chave, editConfigValor.trim())
+      setAlertMessage({ text: 'Configuração atualizada com sucesso.', error: false })
+      setEditConfigChave(null)
+      setEditConfigValor('')
+      void loadConfiguracoes()
+    } catch (err) {
+      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao atualizar configuração.', error: true })
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
@@ -99,6 +202,7 @@ export function AdminPage() {
   useEffect(() => {
     void loadUsers()
     void loadSetores()
+    void loadConfiguracoes()
   }, [])
 
   // Auto-reload members if selected sector changes
@@ -371,6 +475,78 @@ export function AdminPage() {
               </section>
             </div>
           )}
+
+          {activeTab === 'configuracoes' && (
+            <section className="panel">
+              {isConfigLoading ? (
+                <div className="center-screen">Carregando...</div>
+              ) : configuracoes.length === 0 ? (
+                <EmptyState title="Nenhuma configuração" description="As configurações são gerenciadas pelo backend." />
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Variável</th>
+                        <th>Valor</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {configuracoes.map((c) => (
+                        <tr key={c.chave}>
+                          <td><code>{c.chave}</code></td>
+                          <td>
+                            {editConfigChave === c.chave ? (
+                              <input
+                                type="text"
+                                className="config-edit-input"
+                                value={editConfigValor}
+                                onChange={(e) => setEditConfigValor(e.target.value)}
+                                autoFocus
+                              />
+                            ) : (
+                              <span className="config-valor">{c.valor}</span>
+                            )}
+                          </td>
+                          <td>
+                            {editConfigChave === c.chave ? (
+                              <div className="admin-actions-cell">
+                                <button
+                                  type="button"
+                                  className="success-button btn-sm"
+                                  onClick={() => handleAtualizarConfig(c.chave)}
+                                  disabled={actionLoadingId === `config-${c.chave}` || !editConfigValor.trim()}
+                                >
+                                  {actionLoadingId === `config-${c.chave}` ? 'Salvando...' : 'Salvar'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ghost-button btn-sm"
+                                  onClick={() => { setEditConfigChave(null); setEditConfigValor('') }}
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="ghost-button btn-sm"
+                                onClick={() => { setEditConfigChave(c.chave); setEditConfigValor(c.valor) }}
+                                title="Editar"
+                              >
+                                ✏️
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          )}
         </div>
 
         {/* Right: Lists */}
@@ -381,10 +557,32 @@ export function AdminPage() {
                 <Users size={16} />
                 Contas Operacionais
               </h3>
+
+              {/* Filters */}
+              <div className="admin-filters-row">
+                <input
+                  type="text"
+                  className="admin-search-input"
+                  placeholder="Buscar por nome ou matrícula..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <select
+                  className="admin-role-filter"
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                >
+                  <option value="todas">Todos os perfis</option>
+                  <option value="ADMIN">ADMIN</option>
+                  <option value="GESTOR">GESTOR</option>
+                  <option value="FUNCIONARIO">FUNCIONÁRIO</option>
+                </select>
+              </div>
+
               {isUsersLoading ? (
                 <div className="center-screen">Carregando...</div>
-              ) : users.length === 0 ? (
-                <EmptyState title="Nenhum usuário" description="Use o formulário ao lado para cadastrar." />
+              ) : filteredUsers.length === 0 ? (
+                <EmptyState title="Nenhum usuário encontrado" description={searchTerm || roleFilter !== 'todas' ? 'Tente ajustar os filtros.' : 'Use o formulário ao lado para cadastrar.'} />
               ) : (
                 <div className="table-wrap">
                   <table>
@@ -394,15 +592,50 @@ export function AdminPage() {
                         <th>Nome</th>
                         <th>Acesso</th>
                         <th>Status</th>
+                        <th>Ações</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {users.map((u) => (
+                      {filteredUsers.map((u) => (
                         <tr key={u.id}>
                           <td className="td-matricula" data-label="Matrícula">{u.matricula}</td>
                           <td data-label="Nome">{u.nome_completo}</td>
                           <td data-label="Acesso"><span className="badge">{u.role}</span></td>
                           <td data-label="Status">{u.ativo ? <BadgeCheck size={16} className="icon-success" /> : <BadgeX size={16} className="icon-danger" />}</td>
+                          <td data-label="Ações">
+                            <div className="admin-actions-cell">
+                              {u.ativo ? (
+                                <button
+                                  type="button"
+                                  className="ghost-button btn-sm"
+                                  onClick={() => handleDesativarUsuario(u.id)}
+                                  disabled={actionLoadingId === u.id || u.id === adminProfile?.id}
+                                  title={u.id === adminProfile?.id ? 'Não pode desativar a si mesmo' : 'Desativar usuário'}
+                                >
+                                  <ShieldOff size={14} />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="ghost-button btn-sm"
+                                  onClick={() => handleAtivarUsuario(u.id)}
+                                  disabled={actionLoadingId === u.id}
+                                  title="Reativar usuário"
+                                >
+                                  <Shield size={14} />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="ghost-button btn-sm"
+                                onClick={() => setResetPasswordTarget({ id: u.id, nome: u.nome_completo })}
+                                disabled={actionLoadingId === u.id}
+                                title="Resetar senha"
+                              >
+                                <Lock size={14} />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -501,6 +734,47 @@ export function AdminPage() {
           )}
         </div>
       </div>
+
+      {/* Reset Password Modal */}
+      {resetPasswordTarget && (
+        <div className="modal-overlay" onClick={() => { setResetPasswordTarget(null); setResetPasswordValue('') }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Redefinir Senha</h3>
+            <p className="modal-desc">
+              Nova senha para <strong>{resetPasswordTarget.nome}</strong>
+            </p>
+            <div className="modal-form">
+              <label>
+                Nova senha
+                <input
+                  type="password"
+                  value={resetPasswordValue}
+                  onChange={(e) => setResetPasswordValue(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                  autoFocus
+                />
+              </label>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => { setResetPasswordTarget(null); setResetPasswordValue('') }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={handleResetarSenha}
+                  disabled={actionLoadingId === resetPasswordTarget.id || resetPasswordValue.length < 8}
+                >
+                  {actionLoadingId === resetPasswordTarget.id ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }

@@ -40,6 +40,10 @@ export function FuncionarioPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [formSuccess, setFormSuccess] = useState<string | null>(null)
 
+  // Monthly limit
+  const [contagemMes, setContagemMes] = useState<solicitacoesService.ContagemMes | null>(null)
+  const [isLoadingLimite, setIsLoadingLimite] = useState(false)
+
   // Month filter — default to current month (June 2026)
   const now = new Date()
   const [filterYear, setFilterYear] = useState(now.getFullYear())
@@ -158,11 +162,26 @@ export function FuncionarioPage() {
     }
   }
 
+  // Load monthly usage count
+  async function loadContagemMes() {
+    setIsLoadingLimite(true)
+    try {
+      const data = await solicitacoesService.contarSolicitacoesMes()
+      setContagemMes(data)
+    } catch (err) {
+      console.error('Erro ao carregar contagem mensal:', err)
+      setContagemMes(null)
+    } finally {
+      setIsLoadingLimite(false)
+    }
+  }
+
   // Fetch initial data
   useEffect(() => {
     if (profile?.id) {
       void loadSectors()
       void loadSolicitacoes()
+      void loadContagemMes()
     }
   }, [profile?.id])
 
@@ -182,6 +201,7 @@ export function FuncionarioPage() {
       .channel('solicitacoes-funcionario-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'solicitacoes' }, () => {
         void loadSolicitacoes()
+        void loadContagemMes()
       })
       .subscribe()
 
@@ -231,6 +251,7 @@ export function FuncionarioPage() {
       
       setFormSuccess('Solicitação de troca enviada com sucesso!')
       void loadSolicitacoes()
+      void loadContagemMes()
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Erro ao criar solicitação de troca.')
     } finally {
@@ -376,8 +397,22 @@ export function FuncionarioPage() {
             {formError && <div className="error-box">{formError}</div>}
             {formSuccess && <div className="info-box">{formSuccess}</div>}
 
-            <button className="primary-button full-width" disabled={isSubmiting}>
-              {isSubmiting ? 'Enviando...' : 'Enviar Proposta'}
+            {/* Monthly limit indicator */}
+            {contagemMes && (
+              <div className={`info-box limite-mes ${contagemMes.utilizadas >= contagemMes.limite ? 'limite-atingido' : ''}`}>
+                📊 Trocas neste mês: <strong>{contagemMes.utilizadas}</strong> de <strong>{contagemMes.limite}</strong>
+                {contagemMes.utilizadas >= contagemMes.limite
+                  ? ' — Limite atingido!'
+                  : ` — ${contagemMes.limite - contagemMes.utilizadas} restante(s)`}
+              </div>
+            )}
+
+            <button className="primary-button full-width" disabled={isSubmiting || (contagemMes !== null && contagemMes.utilizadas >= contagemMes.limite)}>
+              {isSubmiting
+                ? 'Enviando...'
+                : contagemMes !== null && contagemMes.utilizadas >= contagemMes.limite
+                  ? 'Limite mensal atingido'
+                  : 'Enviar Proposta'}
             </button>
           </form>
         </section>

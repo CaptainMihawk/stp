@@ -1,6 +1,18 @@
-import type { StatusSolicitacao, Turno } from '../lib/types'
-import { supabase } from '../lib/supabase'
+import type { Profile, StatusSolicitacao, Turno, VinculoSetor } from '../lib/types'
 import { callEdgeFunction } from './adminService'
+
+// ---------------------------------------------------------------------------
+// Tipos
+// ---------------------------------------------------------------------------
+
+export interface DadosUsuario {
+  profile: Profile
+  vinculos: (VinculoSetor & { setor: { id: number; nome: string } })[]
+}
+
+export async function listarMeusDados(): Promise<DadosUsuario> {
+  return callEdgeFunction('solicitacoes', { action: 'listar_meus_dados' })
+}
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -30,12 +42,18 @@ function mapParticipante(
 /**
  * Formato rico retornado pela Edge Function — já inclui nomes dos participantes.
  */
+export interface SetorInfo {
+  id: number
+  nome: string
+}
+
 export interface SolicitacaoListItem {
   id: number
   status: StatusSolicitacao
   requisitante: Participante
   cedente: Participante
   gestor_responsavel?: Participante
+  setor: SetorInfo | null
   setor_id: number | null
   data_requisitante: string
   turno_requisitante: Turno
@@ -156,6 +174,22 @@ export type ListarFiltro =
   | 'pendentes_gestor'
   | 'pedidos_revogacao'
 
+// ---------------------------------------------------------------------------
+// Contar solicitações do mês
+// ---------------------------------------------------------------------------
+
+export interface ContagemMes {
+  utilizadas: number
+  limite: number
+  mes_referencia: string
+}
+
+export async function contarSolicitacoesMes(): Promise<ContagemMes> {
+  return callEdgeFunction('solicitacoes', {
+    action: 'contar_solicitacoes_mes',
+  })
+}
+
 export async function listarSolicitacoes(
   filtro: ListarFiltro,
 ): Promise<SolicitacaoListItem[]> {
@@ -167,63 +201,10 @@ export async function listarSolicitacoes(
 
 /**
  * Todas as solicitações sob responsabilidade do gestor (todos os status).
- * O filtro `pendentes_gestor` na Edge Function retorna apenas status `pendente` (STP.md).
+ * Usa a Edge Function /functions/v1/solicitacoes com action listar_solicitacoes_gestor.
  */
-export async function listarSolicitacoesComoGestor(
-  gestorId: string,
-): Promise<SolicitacaoListItem[]> {
-  const { data, error } = await supabase
-    .from('solicitacoes')
-    .select(
-      `
-      id,
-      status,
-      setor_id,
-      data_requisitante,
-      turno_requisitante,
-      data_cedente,
-      turno_cedente,
-      observacao,
-      justificativa_revogacao,
-      replica_gestor,
-      aprovacao,
-      criado_em,
-      respondido_em,
-      requisitante:requisitante_id ( id, nome_completo, matricula ),
-      cedente:cedente_id ( id, nome_completo, matricula )
-    `,
-    )
-    .eq('gestor_responsavel_id', gestorId)
-    .order('criado_em', { ascending: false })
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  const pickProfile = (raw: unknown) => {
-    if (!raw) return null
-    return (Array.isArray(raw) ? raw[0] : raw) as {
-      id: string
-      nome_completo: string
-      matricula: string
-    } | null
-  }
-
-  return (data ?? []).map((row) => ({
-    id: row.id as number,
-    status: row.status as StatusSolicitacao,
-    requisitante: mapParticipante(pickProfile(row.requisitante)),
-    cedente: mapParticipante(pickProfile(row.cedente)),
-    setor_id: row.setor_id as number | null,
-    data_requisitante: row.data_requisitante as string,
-    turno_requisitante: row.turno_requisitante as Turno,
-    data_cedente: row.data_cedente as string,
-    turno_cedente: row.turno_cedente as Turno,
-    observacao: row.observacao as string | null,
-    justificativa_revogacao: (row.justificativa_revogacao as string | null) ?? null,
-    replica_gestor: row.replica_gestor as string | null,
-    aprovacao: row.aprovacao as boolean | null,
-    criado_em: row.criado_em as string,
-    respondido_em: row.respondido_em as string | null,
-  }))
+export async function listarSolicitacoesComoGestor(): Promise<SolicitacaoListItem[]> {
+  return callEdgeFunction('solicitacoes', {
+    action: 'listar_solicitacoes_gestor',
+  })
 }
