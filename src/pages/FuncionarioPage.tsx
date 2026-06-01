@@ -190,18 +190,25 @@ export function FuncionarioPage() {
     }
   }, [selectedSetorId])
 
-  // Realtime subscription (using "ping" to refresh lists securely)
+  // Realtime subscription — com debounce para evitar chamadas duplicadas
   useEffect(() => {
     if (!profile?.id) return
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
     const channel = supabase
       .channel('solicitacoes-funcionario-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'solicitacoes' }, () => {
-        void loadSolicitacoes()
-        void loadContagemMes()
+        if (debounceTimer) clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => {
+          void loadSolicitacoes()
+          void loadContagemMes()
+        }, 500)
       })
       .subscribe()
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
       void supabase.removeChannel(channel)
     }
   }, [profile?.id])

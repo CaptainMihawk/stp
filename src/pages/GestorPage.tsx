@@ -42,14 +42,21 @@ export function GestorPage() {
 
   useEffect(() => {
     if (!profile?.id) return
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
     const channel = supabase
       .channel('solicitacoes-gestor-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'solicitacoes' }, () => {
-        void loadData()
+        if (debounceTimer) clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => {
+          void loadData()
+        }, 500)
       })
       .subscribe()
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
       void supabase.removeChannel(channel)
     }
   }, [profile?.id])
