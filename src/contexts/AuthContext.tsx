@@ -20,7 +20,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 10_000
 
-async function loadUserContext(userId: string) {
+async function loadUserContext() {
   try {
     const data = await listarMeusDados()
     return { profile: data.profile, vinculos: data.vinculos }
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return
           }
 
-          const { profile: fetchedProfile, vinculos } = await loadUserContext(nextSession.user.id)
+          const { profile: fetchedProfile, vinculos } = await loadUserContext()
           if (!alive) return
           setProfile(fetchedProfile)
           setVinculosSetor(vinculos)
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function refreshProfile() {
     const { data: { session: current } } = await supabase.auth.getSession()
     if (!current?.user?.id) return
-    const { profile: fetchedProfile, vinculos } = await loadUserContext(current.user.id)
+    const { profile: fetchedProfile, vinculos } = await loadUserContext()
     setProfile(fetchedProfile)
     setVinculosSetor(vinculos)
   }

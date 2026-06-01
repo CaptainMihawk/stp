@@ -25,20 +25,6 @@ export interface Participante {
   matricula: string
 }
 
-function mapParticipante(
-  row: { id: string; nome_completo: string; matricula: string } | null,
-): Participante {
-  if (!row) {
-    return { nome_completo: '—', matricula: '—' }
-  }
-  return {
-    id: row.id,
-    profile_id: row.id,
-    nome_completo: row.nome_completo,
-    matricula: row.matricula,
-  }
-}
-
 /**
  * Formato rico retornado pela Edge Function — já inclui nomes dos participantes.
  */

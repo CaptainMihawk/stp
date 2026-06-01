@@ -42,7 +42,6 @@ export function FuncionarioPage() {
 
   // Monthly limit
   const [contagemMes, setContagemMes] = useState<solicitacoesService.ContagemMes | null>(null)
-  const [isLoadingLimite, setIsLoadingLimite] = useState(false)
 
   // Month filter — default to current month (June 2026)
   const now = new Date()
@@ -164,15 +163,12 @@ export function FuncionarioPage() {
 
   // Load monthly usage count
   async function loadContagemMes() {
-    setIsLoadingLimite(true)
     try {
       const data = await solicitacoesService.contarSolicitacoesMes()
       setContagemMes(data)
     } catch (err) {
       console.error('Erro ao carregar contagem mensal:', err)
       setContagemMes(null)
-    } finally {
-      setIsLoadingLimite(false)
     }
   }
 
