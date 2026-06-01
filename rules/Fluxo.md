@@ -1,3 +1,4 @@
+```markdown
 # Fluxo
 
 A troca de plantão segue esta ordem:
@@ -76,10 +77,12 @@ Todas as operações usam o mesmo endpoint. O comportamento é definido pelo cam
 
 - O requisitante não pode solicitar troca com ele mesmo.
 - O cedente precisa existir e estar ativo.
+- O `setor_id` enviado deve pertencer a um setor com `ativo = true`.
 - Verifica que o requisitante possui vínculo ativo no `setor_id` enviado.
 - `gestor_responsavel_id` é resolvido automaticamente pelo backend: busca o `profile_id` com `role_setor = 'GESTOR'` e `ativo = true` no setor → se não encontrar, retorna erro `SETOR_SEM_GESTOR`.
 - `turno_requisitante` e `turno_cedente` devem pertencer ao mesmo grupo de carga horária → se divergir, retorna erro `TURNOS_INCOMPATIVEIS`.
 - A solicitação nasce com status `aguardando_cedente`.
+- O limite mensal é compartilhado: conta todas as solicitações do mês onde o usuário aparece como `requisitante_id` **ou** `cedente_id`, com status diferente de `cancelado`, `recusado_cedente` ou `recusado_gestor`. Se o total atingir `limite_solicitacoes_mensal` (configurável via `/admin`, padrão 5), retorna erro `LIMITE_MENSAL`.
 
 **Response 201**
 
@@ -296,6 +299,7 @@ ou
   "status": "pendente",
   "requisitante": { "nome_completo": "...", "matricula": "..." },
   "cedente": { "nome_completo": "...", "matricula": "..." },
+  "setor": { "id": 1, "nome": "UTI" },
   "observacao": "...",
   "data_requisitante": "2026-06-01",
   "turno_requisitante": "SD",
@@ -304,6 +308,34 @@ ou
   "justificativa_revogacao": null,
   "criado_em": "2026-05-28T21:00:00Z"
 }]
+```
+
+### contar_solicitacoes_mes
+
+**Quem pode usar:** usuário autenticado
+
+**Body**
+
+```json
+{
+  "action": "contar_solicitacoes_mes"
+}
+```
+
+**Regras de negócio**
+
+- Conta todas as solicitações do mês corrente onde o usuário aparece como `requisitante_id` ou `cedente_id`.
+- Exclui status `cancelado`, `recusado_cedente` e `recusado_gestor`.
+- Retorna também o limite configurado e o mês de referência.
+
+**Response 200**
+
+```json
+{
+  "utilizadas": 3,
+  "limite": 5,
+  "mes_referencia": "2026-06"
+}
 ```
 
 ---
@@ -427,7 +459,7 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 
 ### listar_membros_setor
 
-**Quem pode usar:** ADMIN e GESTOR do setor
+**Quem pode usar:** ADMIN e membros do setor
 
 **Body**
 
@@ -441,8 +473,8 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 **Regras de negócio**
 
 - ADMIN vê qualquer setor.
-- GESTOR só vê membros do próprio setor.
-- MEMBRO não tem acesso.
+- Qualquer membro com vínculo ativo no setor pode listar.
+- Usuários sem vínculo no setor não têm acesso.
 
 **Response 200**
 
@@ -454,6 +486,172 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
   "role_setor": "MEMBRO",
   "ativo": true
 }]
+```
+
+---
+
+## Endpoint: /functions/v1/admin
+
+```
+POST /functions/v1/admin
+Authorization: Bearer <jwt>
+Content-Type: application/json
+```
+
+Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiadas de gerenciamento de usuários e configurações.
+
+### listar_usuarios
+
+**Body**
+
+```json
+{ "action": "listar_usuarios" }
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Retorna todos os profiles com email e último login vindos do auth.
+- Não expõe `encrypted_password` nem tokens internos.
+
+**Response 200**
+
+```json
+[{
+  "id": "uuid",
+  "nome_completo": "João Silva",
+  "matricula": "MAT001",
+  "role": "FUNCIONARIO",
+  "ativo": true,
+  "email": "joao@stp.interno",
+  "ultimo_login": "2026-06-01T10:00:00Z",
+  "criado_em": "2026-05-01T00:00:00Z"
+}]
+```
+
+### resetar_senha
+
+**Body**
+
+```json
+{
+  "action": "resetar_senha",
+  "profile_id": "uuid",
+  "nova_senha": "senha123"
+}
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- `nova_senha` obrigatória, mínimo 8 caracteres.
+- Senha definida diretamente via Auth Admin API — sem envio de email.
+- O usuário pode trocar a senha no próximo login.
+
+**Response 200**
+
+```json
+{ "success": true }
+```
+
+### ativar_usuario
+
+**Body**
+
+```json
+{
+  "action": "ativar_usuario",
+  "profile_id": "uuid"
+}
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Define `profiles.ativo = true`.
+- Não afeta vínculos de setor (devem ser reativados separadamente via `setores`).
+
+**Response 200**
+
+```json
+{ "profile_id": "uuid", "ativo": true }
+```
+
+### desativar_usuario
+
+**Body**
+
+```json
+{
+  "action": "desativar_usuario",
+  "profile_id": "uuid"
+}
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Define `profiles.ativo = false`.
+- Admin não pode desativar a si mesmo → erro `SELF_DEACTIVATION`.
+- Não deleta o usuário — histórico de solicitações preservado.
+
+**Response 200**
+
+```json
+{ "profile_id": "uuid", "ativo": false }
+```
+
+### listar_configuracoes
+
+**Body**
+
+```json
+{ "action": "listar_configuracoes" }
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Retorna todas as linhas da tabela `configuracoes`.
+
+**Response 200**
+
+```json
+[{
+  "chave": "limite_solicitacoes_mensal",
+  "valor": "5",
+  "descricao": "Limite de solicitações por funcionário por mês",
+  "atualizado_em": "2026-06-01T10:00:00Z"
+}]
+```
+
+### atualizar_configuracao
+
+**Body**
+
+```json
+{
+  "action": "atualizar_configuracao",
+  "chave": "limite_solicitacoes_mensal",
+  "valor": "10"
+}
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Só permite atualizar chaves que já existem — não cria novas chaves.
+- `valor` é sempre string; a função que consome converte para o tipo correto.
+- Atualiza `atualizado_em = now()`.
+
+**Response 200**
+
+```json
+{
+  "chave": "limite_solicitacoes_mensal",
+  "valor": "10",
+  "atualizado_em": "2026-06-01T10:30:00Z"
+}
 ```
 
 ---
@@ -472,10 +670,13 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 | `UNAUTHORIZED` | 401 | token ausente ou inválido |
 | `FORBIDDEN` | 403 | usuário não pode executar a ação |
 | `INVALID_STATUS` | 422 | status atual não permite a operação |
-| `NOT_FOUND` | 404 | solicitação não encontrada |
+| `NOT_FOUND` | 404 | solicitação ou recurso não encontrado |
 | `INVALID_PAYLOAD` | 400 | body inválido |
 | `SELF_REQUEST` | 400 | requisitante e cedente são a mesma pessoa |
 | `SETOR_SEM_GESTOR` | 422 | setor não possui gestor ativo |
 | `SETOR_GESTOR_DUPLICADO` | 409 | já existe um gestor ativo neste setor |
 | `TURNOS_INCOMPATIVEIS` | 422 | turnos com cargas horárias diferentes |
 | `CONFLICT` | 409 | nome de setor duplicado |
+| `LIMITE_MENSAL` | 422 | usuário atingiu o limite de solicitações do mês |
+| `SELF_DEACTIVATION` | 403 | admin tentou desativar a si mesmo |
+```
