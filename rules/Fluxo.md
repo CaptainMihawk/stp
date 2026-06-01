@@ -1,6 +1,3 @@
-```markdown
-# Fluxo
-
 A troca de plantão segue esta ordem:
 
 `criar_solicitacao` → `aguardando_cedente` → `cedente_responder` → `pendente` → `gestor_responder` → `aprovado` ou `recusado_gestor`
@@ -9,22 +6,9 @@ Se o cedente recusar, o fluxo termina em `recusado_cedente`.
 
 Cancelamento e revogação podem ocorrer em qualquer ponto do fluxo ativo.
 
-## Status
-
-| Status | Significado |
-| --- | --- |
-| `aguardando_cedente` | Solicitação criada e aguardando resposta do cedente |
-| `pendente` | Cedente aceitou e agora aguarda o gestor |
-| `aprovado` | Gestor aprovou a troca |
-| `recusado_cedente` | Cedente recusou a troca |
-| `recusado_gestor` | Gestor recusou a troca |
-| `cancelado` | Requisitante cancelou antes do cedente responder |
-| `pedido_revogacao` | Requisitante ou cedente solicitou cancelamento ao gestor |
-| `revogado` | Gestor revogou a solicitação |
-
 ---
-
-## Endpoint: /functions/v1/solicitacoes
+# Solicitações
+Endpoint: /functions/v1/solicitacoes
 
 ```
 POST /functions/v1/solicitacoes
@@ -34,7 +18,7 @@ Content-Type: application/json
 
 Todas as operações usam o mesmo endpoint. O comportamento é definido pelo campo `action`.
 
-### criar_solicitacao
+## criar_solicitacao
 
 **Quem pode usar:** requisitante
 
@@ -90,7 +74,7 @@ Todas as operações usam o mesmo endpoint. O comportamento é definido pelo cam
 { "id": 42, "status": "aguardando_cedente" }
 ```
 
-### cedente_responder
+## cedente_responder
 
 **Quem pode usar:** cedente
 
@@ -123,7 +107,7 @@ ou
 { "status": "recusado_cedente" }
 ```
 
-### gestor_responder
+## gestor_responder
 
 **Quem pode usar:** gestor responsável
 
@@ -157,7 +141,7 @@ ou
 { "status": "recusado_gestor" }
 ```
 
-### cancelar_solicitacao
+## cancelar_solicitacao
 
 **Quem pode usar:** requisitante
 
@@ -182,7 +166,7 @@ ou
 { "status": "cancelado" }
 ```
 
-### solicitar_revogacao
+## solicitar_revogacao
 
 **Quem pode usar:** requisitante ou cedente
 
@@ -210,7 +194,7 @@ ou
 { "status": "pedido_revogacao" }
 ```
 
-### responder_revogacao
+## responder_revogacao
 
 **Quem pode usar:** gestor responsável
 
@@ -243,7 +227,7 @@ ou
 { "status": "pendente" }
 ```
 
-### revogar_solicitacao
+## revogar_solicitacao
 
 **Quem pode usar:** gestor responsável
 
@@ -269,7 +253,7 @@ ou
 { "status": "revogado" }
 ```
 
-### listar_solicitacoes
+## listar_solicitacoes
 
 **Quem pode usar:** usuário autenticado
 
@@ -310,7 +294,7 @@ ou
 }]
 ```
 
-### contar_solicitacoes_mes
+## contar_solicitacoes_mes
 
 **Quem pode usar:** usuário autenticado
 
@@ -339,8 +323,8 @@ ou
 ```
 
 ---
-
-## Endpoint: /functions/v1/setores
+# Setores
+Endpoint: /functions/v1/setores
 
 ```
 POST /functions/v1/setores
@@ -489,8 +473,8 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 ```
 
 ---
-
-## Endpoint: /functions/v1/admin
+# ADMIN
+Endpoint: /functions/v1/admin
 
 ```
 POST /functions/v1/admin
@@ -656,7 +640,7 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 
 ---
 
-## Erros padrão
+# Erros padrão
 
 ```json
 {
@@ -679,4 +663,16 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 | `CONFLICT` | 409 | nome de setor duplicado |
 | `LIMITE_MENSAL` | 422 | usuário atingiu o limite de solicitações do mês |
 | `SELF_DEACTIVATION` | 403 | admin tentou desativar a si mesmo |
-```
+
+# Status
+
+| Status | Significado |
+| --- | --- |
+| `aguardando_cedente` | Solicitação criada e aguardando resposta do cedente |
+| `pendente` | Cedente aceitou e agora aguarda o gestor |
+| `aprovado` | Gestor aprovou a troca |
+| `recusado_cedente` | Cedente recusou a troca |
+| `recusado_gestor` | Gestor recusou a troca |
+| `cancelado` | Requisitante cancelou antes do cedente responder |
+| `pedido_revogacao` | Requisitante ou cedente solicitou cancelamento ao gestor |
+| `revogado` | Gestor revogou a solicitação |

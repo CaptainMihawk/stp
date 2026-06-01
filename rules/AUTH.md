@@ -1,12 +1,10 @@
-# AUTH
-
-## Visão geral
+Visão geral
 
 Toda autenticação do sistema usa o Supabase Auth com JWT. O ADMIN é o único responsável por criar e gerenciar usuários — não existe auto-cadastro.
 
----
 
-## Endpoint: `/functions/v1/create-user`
+# Criar Usuários
+Endpoint: `/functions/v1/create-user`
 
 **Quem pode usar:** ADMIN
 
@@ -16,7 +14,7 @@ Authorization: Bearer <jwt-do-admin>
 Content-Type: application/json
 ```
 
-### Body
+Body
 
 ```json
 {
@@ -62,7 +60,7 @@ Content-Type: application/json
 
 ---
 
-## Login
+# Login
 
 O login é feito diretamente pelo cliente Supabase — sem endpoint customizado.
 
@@ -79,7 +77,7 @@ O JWT retornado deve ser enviado no header `Authorization: Bearer <jwt>` em toda
 
 ---
 
-## Roles
+# Roles
 
 ### Role global — `profiles.role`
 
@@ -104,15 +102,11 @@ Um usuário pode ser `GESTOR` em um setor e `MEMBRO` em outro simultaneamente.
 
 ---
 
-## Vincular usuário a setor após criação
+# Vincular usuário a setor após criação
 
-Se o usuário foi criado sem setor, o ADMIN pode vinculá-lo depois via `/functions/v1/setores` com `action: vincular_membro`.  Verifique o link abaixo para detalhes.
+Se o usuário foi criado sem setor, o ADMIN pode vinculá-lo depois via `/functions/v1/setores` com `action: vincular_membro`.  Verifique o fluxo para mais informações
 
-[STP](https://app.notion.com/p/STP-36e9a164745580efa39bee437afb1790?pvs=21)
-
----
-
-## Erros
+# Erros
 
 ```json
 {
