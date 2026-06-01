@@ -11,7 +11,7 @@ export interface DadosUsuario {
 }
 
 export async function listarMeusDados(): Promise<DadosUsuario> {
-  return callEdgeFunction('solicitacoes', { action: 'listar_meus_dados' })
+  return callEdgeFunction('solicitacoes', { action: 'listar_meus_dados' }, { readOnly: true })
 }
 
 // ---------------------------------------------------------------------------
@@ -173,7 +173,7 @@ export interface ContagemMes {
 export async function contarSolicitacoesMes(): Promise<ContagemMes> {
   return callEdgeFunction('solicitacoes', {
     action: 'contar_solicitacoes_mes',
-  })
+  }, { readOnly: true })
 }
 
 export interface SolicitacaoListResponse {
@@ -196,7 +196,7 @@ export async function listarSolicitacoes(
     filtro,
     page,
     per_page,
-  })
+  }, { readOnly: true })
 }
 
 /**
@@ -211,7 +211,7 @@ export async function listarSolicitacoesComoGestor(
     action: 'listar_solicitacoes_gestor',
     page,
     per_page,
-  })
+  }, { readOnly: true })
 }
 
 // ---------------------------------------------------------------------------
@@ -246,5 +246,5 @@ export async function listarHistoricoSolicitacao(
     solicitacao_id,
     page,
     per_page,
-  })
+  }, { readOnly: true })
 }

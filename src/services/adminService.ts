@@ -12,6 +12,7 @@ const FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`
 export async function callEdgeFunction<T>(
   name: string,
   body: Record<string, unknown>,
+  options?: { readOnly?: boolean },
 ): Promise<T> {
   const {
     data: { session },
@@ -23,23 +24,48 @@ export async function callEdgeFunction<T>(
 
   const url = `${FUNCTIONS_URL}/${name}?apikey=${encodeURIComponent(SUPABASE_ANON_KEY)}`
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify(body),
-  })
+  // Retry apenas para operações de leitura (evita executar escrita 2x)
+  const maxAttempts = options?.readOnly ? 2 : 1
 
-  const json: unknown = await res.json()
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 8_000)
 
-  if (!res.ok) {
-    const err = json as { error?: string; code?: string }
-    throw new Error(err.error ?? `Erro ao chamar ${name}`)
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+
+      window.clearTimeout(timeoutId)
+      const json: unknown = await res.json()
+
+      if (!res.ok) {
+        const err = json as { error?: string; code?: string }
+        if (res.status >= 500 && attempt < maxAttempts - 1) {
+          console.warn(`[${name}] Erro ${res.status}, tentando novamente...`)
+          continue
+        }
+        throw new Error(err.error ?? `Erro ao chamar ${name}`)
+      }
+
+      return json as T
+    } catch (err) {
+      window.clearTimeout(timeoutId)
+      if (err instanceof DOMException && err.name === 'AbortError' && attempt < maxAttempts - 1) {
+        console.warn(`[${name}] Timeout, tentando novamente...`)
+        continue
+      }
+      throw err
+    }
   }
 
-  return json as T
+  throw new Error(`Falha ao chamar ${name} após ${maxAttempts} tentativas.`)
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +110,7 @@ export interface AdminUsuario {
 }
 
 export async function listarUsuarios(): Promise<AdminUsuario[]> {
-  return callEdgeFunction('admin', { action: 'listar_usuarios' })
+  return callEdgeFunction('admin', { action: 'listar_usuarios' }, { readOnly: true })
 }
 
 export interface ResetarSenhaPayload {
@@ -127,7 +153,7 @@ export interface Configuracao {
 }
 
 export async function listarConfiguracoes(): Promise<Configuracao[]> {
-  return callEdgeFunction('admin', { action: 'listar_configuracoes' })
+  return callEdgeFunction('admin', { action: 'listar_configuracoes' }, { readOnly: true })
 }
 
 export async function atualizarConfiguracao(
@@ -172,5 +198,5 @@ export async function listarHistoricoAdmin(
     action: 'listar_historico_admin',
     page,
     per_page,
-  })
+  }, { readOnly: true })
 }

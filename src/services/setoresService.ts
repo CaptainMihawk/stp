@@ -28,7 +28,7 @@ export interface MembroSetor {
 // ---------------------------------------------------------------------------
 
 export async function listarSetores(): Promise<SetorListItem[]> {
-  return callEdgeFunction('setores', { action: 'listar_setores' })
+  return callEdgeFunction('setores', { action: 'listar_setores' }, { readOnly: true })
 }
 
 // ---------------------------------------------------------------------------
@@ -36,7 +36,7 @@ export async function listarSetores(): Promise<SetorListItem[]> {
 // ---------------------------------------------------------------------------
 
 export async function listarMembrosSetor(setor_id: number): Promise<MembroSetor[]> {
-  return callEdgeFunction('setores', { action: 'listar_membros_setor', setor_id })
+  return callEdgeFunction('setores', { action: 'listar_membros_setor', setor_id }, { readOnly: true })
 }
 
 /**
@@ -49,7 +49,7 @@ export async function listarColegasSetor(
   return callEdgeFunction('setores', {
     action: 'listar_membros_setor',
     setor_id,
-  })
+  }, { readOnly: true })
 }
 
 // ---------------------------------------------------------------------------
