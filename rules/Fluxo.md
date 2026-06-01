@@ -720,6 +720,30 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 ```
 
 ---
+# Histórico de Solicitações
+Tabela interna: `solicitacoes_historico`
+
+Toda mudança de status em uma solicitação é registrada automaticamente via trigger de banco. Não há endpoint público para escrita — o histórico é gerenciado exclusivamente pelo backend.
+
+## Estrutura
+
+| Campo | Tipo | Descrição |
+| --- | --- | --- |
+| `id` | bigint | identificador do registro |
+| `solicitacao_id` | bigint | referência à solicitação |
+| `status_anterior` | status_solicitacao | status antes da mudança (`null` na criação) |
+| `status_novo` | status_solicitacao | status após a mudança |
+| `alterado_por` | uuid | `profile_id` de quem executou a ação |
+| `alterado_em` | timestamptz | momento da mudança |
+
+## Regras
+
+- Preenchido automaticamente pelo trigger `trg_log_status_solicitacao` a cada `UPDATE` na tabela `solicitacoes`.
+- `alterado_por` é populado via coluna `updated_by` da solicitação, que as Edge Functions preenchem com o `user.id` do token JWT.
+- Acesso direto bloqueado por RLS — leitura disponível apenas via `SERVICE_ROLE_KEY`.
+
+
+---
 
 # Erros padrão
 
