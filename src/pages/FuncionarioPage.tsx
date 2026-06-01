@@ -145,15 +145,15 @@ export function FuncionarioPage() {
     if (!profile?.id) return
     setIsLoadingList(true)
     try {
-      const [minhas, recebidas] = await Promise.all([
+      const [minhasRes, recebidasRes] = await Promise.all([
         solicitacoesService.listarSolicitacoes('minhas'),
         solicitacoesService.listarSolicitacoes('cedente'),
       ])
       // Ordena da mais nova para a mais antiga
       const sortByDate = (a: solicitacoesService.SolicitacaoListItem, b: solicitacoesService.SolicitacaoListItem) =>
         new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime()
-      setSolicitacoesMinhas(minhas.sort(sortByDate))
-      setSolicitacoesRecebidas(recebidas.sort(sortByDate))
+      setSolicitacoesMinhas(minhasRes.data.sort(sortByDate))
+      setSolicitacoesRecebidas(recebidasRes.data.sort(sortByDate))
     } catch (err) {
       console.error('Erro ao listar solicitações:', err)
     } finally {

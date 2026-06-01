@@ -176,12 +176,26 @@ export async function contarSolicitacoesMes(): Promise<ContagemMes> {
   })
 }
 
+export interface SolicitacaoListResponse {
+  data: SolicitacaoListItem[]
+  pagination: {
+    page: number
+    per_page: number
+    total: number
+    total_pages: number
+  }
+}
+
 export async function listarSolicitacoes(
   filtro: ListarFiltro,
-): Promise<SolicitacaoListItem[]> {
+  page = 1,
+  per_page = 20,
+): Promise<SolicitacaoListResponse> {
   return callEdgeFunction('solicitacoes', {
     action: 'listar_solicitacoes',
     filtro,
+    page,
+    per_page,
   })
 }
 
@@ -189,8 +203,48 @@ export async function listarSolicitacoes(
  * Todas as solicitações sob responsabilidade do gestor (todos os status).
  * Usa a Edge Function /functions/v1/solicitacoes com action listar_solicitacoes_gestor.
  */
-export async function listarSolicitacoesComoGestor(): Promise<SolicitacaoListItem[]> {
+export async function listarSolicitacoesComoGestor(
+  page = 1,
+  per_page = 20,
+): Promise<SolicitacaoListResponse> {
   return callEdgeFunction('solicitacoes', {
     action: 'listar_solicitacoes_gestor',
+    page,
+    per_page,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Histórico de uma solicitação (Gestor)
+// ---------------------------------------------------------------------------
+
+export interface HistoricoSolicitacaoItem {
+  id: number
+  status_anterior: string | null
+  status_novo: string
+  alterado_em: string
+  alterado_por_profile: { nome_completo: string; matricula: string }
+}
+
+export interface HistoricoSolicitacaoResponse {
+  data: HistoricoSolicitacaoItem[]
+  pagination: {
+    page: number
+    per_page: number
+    total: number
+    total_pages: number
+  }
+}
+
+export async function listarHistoricoSolicitacao(
+  solicitacao_id: number,
+  page = 1,
+  per_page = 50,
+): Promise<HistoricoSolicitacaoResponse> {
+  return callEdgeFunction('solicitacoes', {
+    action: 'listar_historico_solicitacao',
+    solicitacao_id,
+    page,
+    per_page,
   })
 }

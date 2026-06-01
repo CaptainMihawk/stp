@@ -19,6 +19,7 @@ export function AdminPage() {
     { id: 'usuarios', label: 'Usuários', icon: '👤' },
     { id: 'setores', label: 'Setores & Vínculos', icon: '🏢' },
     { id: 'configuracoes', label: 'Configurações', icon: '⚙️' },
+    { id: 'historico', label: 'Histórico', icon: '📜' },
   ]
   const [activeTab, setActiveTab] = useState<string>('usuarios')
 
@@ -42,6 +43,13 @@ export function AdminPage() {
   const [isConfigLoading, setIsConfigLoading] = useState(false)
   const [editConfigChave, setEditConfigChave] = useState<string | null>(null)
   const [editConfigValor, setEditConfigValor] = useState('')
+
+  // Histórico (carregado sob demanda)
+  const [historico, setHistorico] = useState<adminService.AdminHistoricoItem[]>([])
+  const [isHistoricoLoading, setIsHistoricoLoading] = useState(false)
+  const [historicoPage, setHistoricoPage] = useState(1)
+  const [historicoPagination, setHistoricoPagination] = useState<{ total: number; total_pages: number } | null>(null)
+  const [historicoFilter, setHistoricoFilter] = useState('')
 
   // Form inputs
   const [userForm, setUserForm] = useState<adminService.CreateUserPayload>({
@@ -184,6 +192,29 @@ export function AdminPage() {
     }
   }
 
+  // Load histórico (carregado sob demanda)
+  async function loadHistorico(page = 1) {
+    setIsHistoricoLoading(true)
+    try {
+      const response = await adminService.listarHistoricoAdmin(page)
+      setHistorico(response.data)
+      setHistoricoPagination(response.pagination)
+      setHistoricoPage(page)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : ''
+      // Erro de action inválida (400) = não implementada, outros erros são temporários
+      if (message.includes('inválida') || message.includes('not found')) {
+        console.warn('Histórico indisponível — ação listar_historico_admin não implementada no backend.')
+      } else {
+        console.warn('Erro ao carregar histórico:', message)
+      }
+      setHistorico([])
+      setHistoricoPagination(null)
+    } finally {
+      setIsHistoricoLoading(false)
+    }
+  }
+
   // Load members of a specific sector
   async function loadMembrosSetor(setorId: number) {
     setIsMembrosLoading(true)
@@ -205,7 +236,12 @@ export function AdminPage() {
     void loadConfiguracoes()
   }, [])
 
-  // Auto-reload members if selected sector changes
+  // Load histórico apenas quando a aba for acessada
+  useEffect(() => {
+    if (activeTab === 'historico') {
+      void loadHistorico()
+    }
+  }, [activeTab])
   useEffect(() => {
     if (selectedSetorId) {
       void loadMembrosSetor(selectedSetorId)
@@ -544,6 +580,103 @@ export function AdminPage() {
                     </tbody>
                   </table>
                 </div>
+              )}
+            </section>
+          )}
+
+          {activeTab === 'historico' && (
+            <section className="panel">
+              <h3 className="admin-section-title">
+                <span>📜</span> Histórico de Solicitações
+              </h3>
+              <p className="admin-section-desc">
+                Registro cronológico de todas as mudanças de status.
+              </p>
+
+              {isHistoricoLoading ? (
+                <div className="center-screen">Carregando...</div>
+              ) : historico.length === 0 && !historicoFilter ? (
+                <EmptyState title="Nenhum registro" description="O histórico será preenchido automaticamente conforme as solicitações forem alteradas." />
+              ) : (
+                <>
+                  {/* Filtro por solicitação */}
+                  <div className="admin-filters-row">
+                    <input
+                      type="number"
+                      className="admin-search-input"
+                      placeholder="Filtrar por solicitação #..."
+                      value={historicoFilter}
+                      onChange={(e) => setHistoricoFilter(e.target.value)}
+                    />
+                    {historicoFilter && (
+                      <button
+                        type="button"
+                        className="ghost-button btn-sm"
+                        onClick={() => { setHistoricoFilter(''); loadHistorico(1) }}
+                      >
+                        Limpar filtro
+                      </button>
+                    )}
+                  </div>
+
+                  {historico.length === 0 ? (
+                    <EmptyState title="Nenhum registro encontrado" description="Nenhum histórico para esta solicitação." />
+                  ) : (
+                    <>
+                      <div className="table-wrap">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Solicitação</th>
+                              <th>Setor</th>
+                              <th>Anterior</th>
+                              <th>Novo</th>
+                              <th>Responsável</th>
+                              <th>Data/Hora</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {historico
+                              .filter((h) => !historicoFilter || String(h.solicitacao.id) === historicoFilter)
+                              .map((h) => (
+                                <tr key={h.id}>
+                                  <td>#{h.solicitacao.id}</td>
+                                  <td>{h.solicitacao.setor.nome}</td>
+                                  <td>{h.status_anterior ? <span className="badge badge-muted">{h.status_anterior}</span> : <span className="text-muted">—</span>}</td>
+                                  <td><span className={`status-pill ${h.status_novo === 'aprovado' || h.status_novo === 'revogado' ? 'approved' : h.status_novo === 'recusado_cedente' || h.status_novo === 'recusado_gestor' || h.status_novo === 'cancelado' ? 'rejected' : 'pending'}`}>{h.status_novo}</span></td>
+                                  <td>{h.alterado_por_profile.nome_completo}</td>
+                                  <td className="td-date">{new Date(h.alterado_em).toLocaleString('pt-BR')}</td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {historicoPagination && historicoPagination.total_pages > 1 && (
+                        <div className="pagination-row">
+                          <button
+                            type="button"
+                            className="ghost-button btn-sm"
+                            disabled={historicoPage <= 1}
+                            onClick={() => loadHistorico(historicoPage - 1)}
+                          >
+                            ← Anterior
+                          </button>
+                          <span className="pagination-info">
+                            Página {historicoPage} de {historicoPagination.total_pages} ({historicoPagination.total} registros)
+                          </span>
+                          <button
+                            type="button"
+                            className="ghost-button btn-sm"
+                            disabled={historicoPage >= historicoPagination.total_pages}
+                            onClick={() => loadHistorico(historicoPage + 1)}
+                          >
+                            Próxima →
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
               )}
             </section>
           )}

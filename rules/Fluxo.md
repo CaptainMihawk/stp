@@ -262,9 +262,13 @@ ou
 ```json
 {
   "action": "listar_solicitacoes",
-  "filtro": "minhas"
+  "filtro": "minhas",
+  "page": 1,
+  "per_page": 20
 }
 ```
+
+
 
 **Filtros**
 
@@ -274,24 +278,33 @@ ou
 | `cedente` | solicitações onde o usuário é o cedente |
 | `pendentes_gestor` | solicitações do gestor com status `pendente` |
 | `pedidos_revogacao` | solicitações do gestor com status `pedido_revogacao` |
+|`page` e `per_page` | são opcionais (padrão: page = 1, per_page = 20, máximo per_page = 100).
 
 **Response 200**
 
 ```json
-[{
-  "id": 42,
-  "status": "pendente",
-  "requisitante": { "nome_completo": "...", "matricula": "..." },
-  "cedente": { "nome_completo": "...", "matricula": "..." },
-  "setor": { "id": 1, "nome": "UTI" },
-  "observacao": "...",
-  "data_requisitante": "2026-06-01",
-  "turno_requisitante": "SD",
-  "data_cedente": "2026-06-03",
-  "turno_cedente": "SN",
-  "justificativa_revogacao": null,
-  "criado_em": "2026-05-28T21:00:00Z"
-}]
+{
+  "data": [{
+    "id": 42,
+    "status": "pendente",
+    "requisitante": { "nome_completo": "...", "matricula": "..." },
+    "cedente": { "nome_completo": "...", "matricula": "..." },
+    "setor": { "id": 1, "nome": "UTI" },
+    "observacao": "...",
+    "data_requisitante": "2026-06-01",
+    "turno_requisitante": "SD",
+    "data_cedente": "2026-06-03",
+    "turno_cedente": "SN",
+    "justificativa_revogacao": null,
+    "criado_em": "2026-05-28T21:00:00Z"
+  }],
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 45,
+    "total_pages": 3
+  }
+}
 ```
 
 ## contar_solicitacoes_mes
@@ -369,7 +382,9 @@ ou
 
 ```json
 {
-  "action": "listar_solicitacoes_gestor"
+  "action": "listar_solicitacoes_gestor",
+  "page": 1,
+  "per_page": 20
 }
 ```
 
@@ -378,28 +393,79 @@ ou
 - Retorna todas as solicitações onde o usuário logado é o `gestor_responsavel_id`.
 - Sem filtro de status — retorna todos os estados (ativo, encerrado, revogado).
 - Ordenado por `criado_em` decrescente.
+- `page`e `per_page` são opcionais (padrão: page = 1, per_page = 20, máximo per_page = 100).
 - Inclui `aprovacao`, `replica_gestor` e `respondido_em`.
 
 **Response 200**
 
 ```json
-[{
-  "id": 42,
-  "status": "aprovado",
-  "requisitante": { "nome_completo": "...", "matricula": "..." },
-  "cedente": { "nome_completo": "...", "matricula": "..." },
-  "setor": { "id": 1, "nome": "UTI" },
-  "observacao": "...",
-  "data_requisitante": "2026-06-01",
-  "turno_requisitante": "SD",
-  "data_cedente": "2026-06-03",
-  "turno_cedente": "SN",
-  "justificativa_revogacao": null,
-  "aprovacao": true,
-  "replica_gestor": null,
-  "respondido_em": "2026-06-01T12:00:00Z",
-  "criado_em": "2026-05-28T21:00:00Z"
-}]
+{
+  "data": [{
+    "id": 42,
+    "status": "aprovado",
+    "requisitante": { "nome_completo": "...", "matricula": "..." },
+    "cedente": { "nome_completo": "...", "matricula": "..." },
+    "setor": { "id": 1, "nome": "UTI" },
+    "observacao": "...",
+    "data_requisitante": "2026-06-01",
+    "turno_requisitante": "SD",
+    "data_cedente": "2026-06-03",
+    "turno_cedente": "SN",
+    "justificativa_revogacao": null,
+    "aprovacao": true,
+    "replica_gestor": null,
+    "respondido_em": "2026-06-01T12:00:00Z",
+    "criado_em": "2026-05-28T21:00:00Z"
+  }],
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 10,
+    "total_pages": 1
+  }
+}
+```
+
+
+## listar_historico_solicitacao
+
+**Quem pode usar:** gestor responsável
+
+**Body**
+
+```json
+{
+  "action": "listar_historico_solicitacao",
+  "solicitacao_id": 42,
+  "page": 1,
+  "per_page": 50
+}
+```
+
+**Regras de negócio**
+
+- Apenas o gestor responsável da solicitação pode consultar.
+- `page` e `per_page` são opcionais (padrão: `page = 1`, `per_page = 50`, máximo `per_page = 100`).
+- Ordenado por `alterado_em` decrescente.
+
+**Response 200**
+
+```json
+{
+  "data": [{
+    "id": 1,
+    "status_anterior": "aguardando_cedente",
+    "status_novo": "pendente",
+    "alterado_em": "2026-06-01T18:00:00Z",
+    "alterado_por_profile": { "nome_completo": "Maria Lima", "matricula": "MAT002" }
+  }],
+  "pagination": {
+    "page": 1,
+    "per_page": 50,
+    "total": 3,
+    "total_pages": 1
+  }
+}
 ```
 
 
@@ -718,6 +784,47 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
   "atualizado_em": "2026-06-01T10:30:00Z"
 }
 ```
+
+### listar_historico_admin
+
+**Body**
+
+```json
+{
+  "action": "listar_historico_admin",
+  "page": 1,
+  "per_page": 50
+}
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Retorna todo o histórico de mudanças de status de todas as solicitações.
+- `page` e `per_page` são opcionais (padrão: `page = 1`, `per_page = 50`, máximo `per_page = 100`).
+- Ordenado por `alterado_em` decrescente.
+
+**Response 200**
+
+```json
+{
+  "data": [{
+    "id": 1,
+    "status_anterior": "aguardando_cedente",
+    "status_novo": "pendente",
+    "alterado_em": "2026-06-01T18:00:00Z",
+    "solicitacao": { "id": 42, "setor": { "nome": "UTI" } },
+    "alterado_por_profile": { "nome_completo": "Maria Lima", "matricula": "MAT002" }
+  }],
+  "pagination": {
+    "page": 1,
+    "per_page": 50,
+    "total": 10,
+    "total_pages": 1
+  }
+}
+```
+
 
 ---
 # Histórico de Solicitações

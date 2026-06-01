@@ -17,13 +17,17 @@ export async function callEdgeFunction<T>(
     data: { session },
   } = await supabase.auth.getSession()
 
+  if (!session?.access_token) {
+    throw new Error('Sessão expirada. Faça login novamente.')
+  }
+
   const url = `${FUNCTIONS_URL}/${name}?apikey=${encodeURIComponent(SUPABASE_ANON_KEY)}`
 
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${session?.access_token ?? ''}`,
+      Authorization: `Bearer ${session.access_token}`,
     },
     body: JSON.stringify(body),
   })
@@ -134,5 +138,39 @@ export async function atualizarConfiguracao(
     action: 'atualizar_configuracao',
     chave,
     valor,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Histórico de Solicitações (Admin)
+// ---------------------------------------------------------------------------
+
+export interface AdminHistoricoItem {
+  id: number
+  status_anterior: string | null
+  status_novo: string
+  alterado_em: string
+  alterado_por_profile: { nome_completo: string; matricula: string }
+  solicitacao: { id: number; setor: { nome: string } }
+}
+
+export interface AdminHistoricoResponse {
+  data: AdminHistoricoItem[]
+  pagination: {
+    page: number
+    per_page: number
+    total: number
+    total_pages: number
+  }
+}
+
+export async function listarHistoricoAdmin(
+  page = 1,
+  per_page = 50,
+): Promise<AdminHistoricoResponse> {
+  return callEdgeFunction('admin', {
+    action: 'listar_historico_admin',
+    page,
+    per_page,
   })
 }
