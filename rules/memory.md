@@ -87,6 +87,8 @@ Revogação: gestor revoga direto; req/cedente pedem → gestor responde
 - **Admin histórico**: carregado sob demanda (só quando aba é acessada); trata erro 400 como "não implementado"
 - **Alertas**: `alertMessage` único com `{ text, error }` — sobrescreve, sem pilha
 - **Editar usuário**: modal inline na tabela de usuários (✏️); envia só campos alterados; trata `MATRICULA_DUPLICADA`
+- **Editar/desativar setor**: botões ✏️/🗑️ nos cards de setor; modal inline para edição; confirm dialog para desativar
+- **Validação de campos**: `validateUserFields()` compartilhada (matrícula 4–12, nome 10–64) — usada em criar e editar usuário
 
 ## Configurações
 

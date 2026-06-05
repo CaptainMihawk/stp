@@ -619,6 +619,59 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 }]
 ```
 
+### editar_setor
+
+**Quem pode usar:** ADMIN
+
+**Body**
+
+```json
+{
+  "action": "editar_setor",
+  "setor_id": 1,
+  "nome": "Novo Nome"
+}
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Nome deve ser único — erro `CONFLICT` se já estiver em uso por outro setor.
+- Não afeta membros, vínculos ou status `ativo`.
+
+**Response 200**
+
+```json
+{ "id": 1, "nome": "Novo Nome", "ativo": true }
+```
+
+### desativar_setor
+
+**Quem pode usar:** ADMIN
+
+**Body**
+
+```json
+{
+  "action": "desativar_setor",
+  "setor_id": 1
+}
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Define `setores.ativo = false` e desativa todos os vínculos `profiles_setores` do setor automaticamente.
+- Bloqueia novas solicitações neste setor (`SETOR_SEM_GESTOR` não se aplica — o setor já não passa na validação `ativo = true`).
+- Solicitações já existentes não são afetadas.
+- Erro `INVALID_STATUS` se o setor já estiver inativo.
+
+**Response 200**
+
+```json
+{ "setor_id": 1, "ativo": false }
+```
+
 ---
 # ADMIN
 Endpoint: /functions/v1/admin
