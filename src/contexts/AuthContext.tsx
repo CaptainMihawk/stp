@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase, AUTH_DOMAIN } from '../lib/supabase'
 import type { Profile, VinculoSetor } from '../lib/types'
 import { listarMeusDados } from '../services/solicitacoesService'
+import { logAppError } from '../lib/errors'
 
 type AuthContextValue = {
   session: Session | null
@@ -25,7 +26,7 @@ async function loadUserContext() {
     const data = await listarMeusDados()
     return { profile: data.profile, vinculos: data.vinculos }
   } catch (err) {
-    console.error('Erro ao carregar dados do usuário via Edge Function:', err)
+    logAppError(err, { endpoint: 'solicitacoes', action: 'listar_meus_dados' })
     return { profile: null, vinculos: [] }
   }
 }
@@ -71,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(fetchedProfile)
           setVinculosSetor(vinculos)
         } catch (err) {
-          console.error('Erro no processamento de autenticação:', err)
+          logAppError(err, { endpoint: 'auth', action: 'onAuthStateChange' })
         } finally {
           finishLoading()
         }

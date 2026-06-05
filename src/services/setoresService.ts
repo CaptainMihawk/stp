@@ -110,3 +110,15 @@ export async function desativarSetor(
 ): Promise<{ setor_id: number; ativo: boolean }> {
   return callEdgeFunction('setores', { action: 'desativar_setor', setor_id })
 }
+
+// ---------------------------------------------------------------------------
+// Reativar setor (ADMIN only)
+// Reativa apenas o setor — vínculos devem ser reativados separadamente
+// Erro INVALID_STATUS se já estiver ativo
+// ---------------------------------------------------------------------------
+
+export async function reativarSetor(
+  setor_id: number,
+): Promise<{ setor_id: number; ativo: boolean }> {
+  return callEdgeFunction('setores', { action: 'reativar_setor', setor_id })
+}

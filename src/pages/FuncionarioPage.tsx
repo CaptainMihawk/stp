@@ -8,6 +8,8 @@ import { EmptyState } from '../components/EmptyState'
 import { RequestCard } from '../components/RequestCard'
 import { SearchableSelect } from '../components/SearchableSelect'
 import { TurnoSelect } from '../components/TurnoSelect'
+import { useToast } from '../components/Toast'
+import { handleError } from '../lib/errors'
 import * as solicitacoesService from '../services/solicitacoesService'
 import * as setoresService from '../services/setoresService'
 import { FileText, ArrowLeftRight, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -19,6 +21,7 @@ type PlantaoInput = {
 
 export function FuncionarioPage() {
   const { profile } = useAuth()
+  const toast = useToast()
   
   // Tabs config
   const [activeTab, setActiveTab] = useState<string>('minhas')
@@ -35,10 +38,6 @@ export function FuncionarioPage() {
   const [isLoadingList, setIsLoadingList] = useState(false)
   const [isSubmiting, setIsSubmiting] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null)
-  
-  // Feedback alerts
-  const [formError, setFormError] = useState<string | null>(null)
-  const [formSuccess, setFormSuccess] = useState<string | null>(null)
 
   // Monthly limit
   const [contagemMes, setContagemMes] = useState<solicitacoesService.ContagemMes | null>(null)
@@ -118,7 +117,7 @@ export function FuncionarioPage() {
         setSelectedSetorId(String(data[0].id))
       }
     } catch (err) {
-      console.error('Erro ao listar setores do funcionário:', err)
+      toast.error(handleError(err, { endpoint: 'setores', action: 'listar_setores' }))
     } finally {
       setIsLoadingSectores(false)
     }
@@ -133,7 +132,7 @@ export function FuncionarioPage() {
       setMembrosSetor(data.filter((m) => m.profile_id !== profile?.id))
       setSelectedCedenteId('')
     } catch (err) {
-      console.error('Erro ao listar membros do setor:', err)
+      toast.error(handleError(err, { endpoint: 'setores', action: 'listar_membros_setor' }))
       setMembrosSetor([])
     } finally {
       setIsLoadingMembros(false)
@@ -155,7 +154,7 @@ export function FuncionarioPage() {
       setSolicitacoesMinhas(minhasRes.data.sort(sortByDate))
       setSolicitacoesRecebidas(recebidasRes.data.sort(sortByDate))
     } catch (err) {
-      console.error('Erro ao listar solicitações:', err)
+      toast.error(handleError(err, { endpoint: 'solicitacoes', action: 'listar_solicitacoes' }))
     } finally {
       setIsLoadingList(false)
     }
@@ -167,7 +166,7 @@ export function FuncionarioPage() {
       const data = await solicitacoesService.contarSolicitacoesMes()
       setContagemMes(data)
     } catch (err) {
-      console.error('Erro ao carregar contagem mensal:', err)
+      toast.error(handleError(err, { endpoint: 'solicitacoes', action: 'contar_solicitacoes_mes' }))
       setContagemMes(null)
     }
   }
@@ -216,21 +215,19 @@ export function FuncionarioPage() {
   // Create solicitation
   async function handleSubmit(event: React.SyntheticEvent<HTMLFormElement>) {
     event.preventDefault()
-    setFormError(null)
-    setFormSuccess(null)
 
     if (!selectedSetorId || !selectedCedenteId) {
-      setFormError('Selecione o setor e o colega com quem quer trocar.')
+      toast.warning('Selecione o setor e o colega com quem quer trocar.')
       return
     }
 
     if (!meuPlantao.data || !meuPlantao.turno || !plantaoDestino.data || !plantaoDestino.turno) {
-      setFormError('Preencha as datas e turnos de ambos os plantões.')
+      toast.warning('Preencha as datas e turnos de ambos os plantões.')
       return
     }
 
     if (meuPlantao.data === plantaoDestino.data && meuPlantao.turno === plantaoDestino.turno) {
-      setFormError('Não pode trocar o mesmo plantão (mesma data e mesmo turno) com um colega.')
+      toast.warning('Não pode trocar o mesmo plantão (mesma data e mesmo turno) com um colega.')
       return
     }
 
@@ -252,11 +249,11 @@ export function FuncionarioPage() {
       setObservacao('')
       setSelectedCedenteId('')
       
-      setFormSuccess('Solicitação de troca enviada com sucesso!')
+      toast.success('Solicitação de troca enviada com sucesso!')
       void loadSolicitacoes()
       void loadContagemMes()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Erro ao criar solicitação de troca.')
+      toast.error(handleError(err, { endpoint: 'solicitacoes', action: 'criar_solicitacao' }))
     } finally {
       setIsSubmiting(false)
     }
@@ -269,7 +266,7 @@ export function FuncionarioPage() {
       await solicitacoesService.cedenteResponder(id, true)
       void loadSolicitacoes()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao aceitar a solicitação.')
+      toast.error(handleError(err, { endpoint: 'solicitacoes', action: 'cedente_responder' }))
     } finally {
       setActionLoadingId(null)
     }
@@ -282,7 +279,7 @@ export function FuncionarioPage() {
       await solicitacoesService.cedenteResponder(id, false)
       void loadSolicitacoes()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao recusar a solicitação.')
+      toast.error(handleError(err, { endpoint: 'solicitacoes', action: 'cedente_responder' }))
     } finally {
       setActionLoadingId(null)
     }
@@ -294,7 +291,7 @@ export function FuncionarioPage() {
       await solicitacoesService.cancelarSolicitacao(id)
       void loadSolicitacoes()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao cancelar a solicitação.')
+      toast.error(handleError(err, { endpoint: 'solicitacoes', action: 'cancelar_solicitacao' }))
     } finally {
       setActionLoadingId(null)
     }
@@ -306,7 +303,7 @@ export function FuncionarioPage() {
       await solicitacoesService.solicitarRevogacao(id, justificativa)
       void loadSolicitacoes()
     } catch (err) {
-      throw err
+      toast.error(handleError(err, { endpoint: 'solicitacoes', action: 'solicitar_revogacao' }))
     } finally {
       setActionLoadingId(null)
     }
@@ -396,9 +393,6 @@ export function FuncionarioPage() {
                 placeholder="Ex: Motivo pessoal, necessidade de ajuste de horário..."
               />
             </label>
-
-            {formError && <div className="error-box">{formError}</div>}
-            {formSuccess && <div className="info-box">{formSuccess}</div>}
 
             {/* Monthly limit indicator */}
             {contagemMes && (

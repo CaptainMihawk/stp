@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { AppError } from '../lib/errors'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -51,7 +52,7 @@ export async function callEdgeFunction<T>(
           console.warn(`[${name}] Erro ${res.status}, tentando novamente...`)
           continue
         }
-        throw new Error(err.error ?? `Erro ao chamar ${name}`)
+        throw new AppError(err.code ?? 'UNKNOWN', err.error ?? `Erro ao chamar ${name}`)
       }
 
       return json as T
@@ -136,9 +137,17 @@ export async function ativarUsuario(
   })
 }
 
+export interface DesativarUsuarioResponse {
+  profile_id: string
+  ativo: boolean
+  /** Presente apenas quando o usuário era GESTOR de algum setor */
+  aviso?: string
+  setores_sem_gestor?: { setor_id: number; nome: string }[]
+}
+
 export async function desativarUsuario(
   profile_id: string,
-): Promise<{ profile_id: string; ativo: boolean }> {
+): Promise<DesativarUsuarioResponse> {
   return callEdgeFunction('admin', {
     action: 'desativar_usuario',
     profile_id,

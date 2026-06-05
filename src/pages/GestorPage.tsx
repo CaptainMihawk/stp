@@ -8,10 +8,13 @@ import { Tabs, type TabOption } from '../components/Tabs'
 import { EmptyState } from '../components/EmptyState'
 import { GestorRequestCard } from '../components/GestorRequestCard'
 import { StatusPill } from '../components/StatusPill'
+import { useToast } from '../components/Toast'
+import { handleError } from '../lib/errors'
 import * as solicitacoesService from '../services/solicitacoesService'
 
 export function GestorPage() {
   const { profile } = useAuth()
+  const toast = useToast()
 
   const [activeTab, setActiveTab] = useState<string>('pendentes')
 
@@ -28,7 +31,7 @@ export function GestorPage() {
       response.data.sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
       setSolicitacoes(response.data)
     } catch (err) {
-      console.error('Erro ao buscar solicitações para o gestor:', err)
+      toast.error(handleError(err, { endpoint: 'solicitacoes', action: 'listar_solicitacoes_gestor' }))
     } finally {
       setIsLoading(false)
     }
@@ -81,6 +84,10 @@ export function GestorPage() {
     setActionLoadingId(id)
     try {
       return await fn()
+    } catch (err) {
+      // O GestorRequestCard já mostra erro inline, mas garantimos toast + log também
+      toast.error(handleError(err, { endpoint: 'solicitacoes', action: 'gestor_acao' }))
+      throw err // rethrow para o card mostrar o erro inline
     } finally {
       setActionLoadingId(null)
     }
