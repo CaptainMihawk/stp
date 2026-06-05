@@ -731,6 +731,38 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 ```json
 { "profile_id": "uuid", "ativo": false }
 ```
+### editar_usuario
+
+**Body**
+
+```json
+{
+  "action": "editar_usuario",
+  "profile_id": "uuid",
+  "nome_completo": "Novo Nome",
+  "matricula": "MAT999"
+}
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Ao menos um campo (`nome_completo` ou `matricula`) deve ser informado.
+- Matrícula deve ser única — erro `MATRICULA_DUPLICADA` se já estiver em uso por outro usuário.
+- Não afeta vínculos de setor, senha ou status `ativo`.
+- Alterar a matrícula reflete imediatamente em todos os joins de histórico e solicitações (comportamento por design).
+
+**Response 200**
+
+```json
+{
+  "id": "uuid",
+  "matricula": "MAT999",
+  "nome_completo": "Novo Nome",
+  "role": "FUNCIONARIO",
+  "ativo": true
+}
+```
 
 ### listar_configuracoes
 
@@ -875,6 +907,7 @@ Toda mudança de status em uma solicitação é registrada automaticamente via t
 | `CONFLICT` | 409 | nome de setor duplicado |
 | `LIMITE_MENSAL` | 422 | usuário atingiu o limite de solicitações do mês |
 | `SELF_DEACTIVATION` | 403 | admin tentou desativar a si mesmo |
+| `MATRICULA_DUPLICADA` | 409 | matrícula já está em uso por outro usuário |
 
 # Status
 
