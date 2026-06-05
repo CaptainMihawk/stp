@@ -1874,6 +1874,14 @@ tbody tr:hover {
   color: var(--muted);
 }
 
+.setor-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
 .setor-select {
   margin-bottom: 12px;
   font-size: 0.8rem;
