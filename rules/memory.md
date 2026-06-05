@@ -86,6 +86,7 @@ Revogação: gestor revoga direto; req/cedente pedem → gestor responde
 - **Filtro mensal**: nativo no front-end (filter por `criado_em`), não no backend
 - **Admin histórico**: carregado sob demanda (só quando aba é acessada); trata erro 400 como "não implementado"
 - **Alertas**: `alertMessage` único com `{ text, error }` — sobrescreve, sem pilha
+- **Editar usuário**: modal inline na tabela de usuários (✏️); envia só campos alterados; trata `MATRICULA_DUPLICADA`
 
 ## Configurações
 

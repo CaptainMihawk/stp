@@ -763,6 +763,10 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
   "ativo": true
 }
 ```
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `matricula` | ✅ | 4–12 caracteres. |
+| `nome_completo` | ✅ | 10–64 caracteres |
 
 ### listar_configuracoes
 

@@ -30,7 +30,7 @@ Body
 | Campo | Obrigatório | Descrição |
 | --- | --- | --- |
 | `matricula` | ✅ | 4–12 caracteres. Usada para gerar o email de login |
-| `nome_completo` | ✅ | 15–64 caracteres |
+| `nome_completo` | ✅ | 10–64 caracteres |
 | `password` | ✅ | Senha inicial definida pelo ADMIN |
 | `role` | ✅ | Role global: `ADMIN`, `GESTOR` ou `FUNCIONARIO` |
 | `setor_id` | ⚪ opcional | ID do setor para vínculo imediato |
