@@ -86,3 +86,27 @@ export async function desativarMembro(
 ): Promise<{ profile_id: string; setor_id: number; ativo: boolean }> {
   return callEdgeFunction('setores', { action: 'desativar_membro', profile_id, setor_id })
 }
+
+// ---------------------------------------------------------------------------
+// Editar setor (ADMIN only)
+// Nome deve ser único — erro CONFLICT se já em uso
+// ---------------------------------------------------------------------------
+
+export async function editarSetor(
+  setor_id: number,
+  nome: string,
+): Promise<{ id: number; nome: string; ativo: boolean }> {
+  return callEdgeFunction('setores', { action: 'editar_setor', setor_id, nome })
+}
+
+// ---------------------------------------------------------------------------
+// Desativar setor (ADMIN only)
+// Define ativo = false no setor + desativa todos os vínculos automaticamente
+// Erro INVALID_STATUS se já estiver inativo
+// ---------------------------------------------------------------------------
+
+export async function desativarSetor(
+  setor_id: number,
+): Promise<{ setor_id: number; ativo: boolean }> {
+  return callEdgeFunction('setores', { action: 'desativar_setor', setor_id })
+}
