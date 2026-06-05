@@ -671,6 +671,20 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 ```json
 { "setor_id": 1, "ativo": false }
 ```
+### reativar_setor
+
+**Quem pode usar:** ADMIN
+
+**Body**
+{ "action": "reativar_setor", "setor_id": 1 }
+
+**Regras de negócio**
+- Somente ADMIN.
+- Reativa apenas o setor — vínculos de membros devem ser reativados separadamente via `vincular_membro`.
+- Erro `INVALID_STATUS` se o setor já estiver ativo.
+
+**Response 200**
+{ "setor_id": 1, "ativo": true }
 
 ---
 # ADMIN
@@ -777,12 +791,25 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 - Somente ADMIN.
 - Define `profiles.ativo = false`.
 - Admin não pode desativar a si mesmo → erro `SELF_DEACTIVATION`.
+- Desativa também todos os vínculos profiles_setores do usuário automaticamente.
+- Se o usuário era GESTOR de algum setor, a resposta inclui `aviso` e `setores_sem_gestor` — os setores afetados ficam sem gestor ativo e novas solicitações nesses setores serão bloqueadas até que um novo gestor seja vinculado.
 - Não deleta o usuário — histórico de solicitações preservado.
 
-**Response 200**
-
+**Response 200 — sem aviso**
 ```json
 { "profile_id": "uuid", "ativo": false }
+```
+
+**Response 200 — com aviso (usuário era gestor)**
+```json
+{
+  "profile_id": "uuid",
+  "ativo": false,
+  "aviso": "Usuário era gestor de setor(es) que agora ficaram sem gestor ativo.",
+  "setores_sem_gestor": [
+    { "setor_id": 1, "nome": "UTI" }
+  ]
+}
 ```
 ### editar_usuario
 
