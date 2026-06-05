@@ -145,6 +145,33 @@ export async function desativarUsuario(
   })
 }
 
+// ---------------------------------------------------------------------------
+// Editar usuário (ADMIN only)
+// ---------------------------------------------------------------------------
+
+export interface EditarUsuarioPayload {
+  profile_id: string
+  nome_completo?: string
+  matricula?: string
+}
+
+export interface EditarUsuarioResponse {
+  id: string
+  matricula: string
+  nome_completo: string
+  role: string
+  ativo: boolean
+}
+
+export async function editarUsuario(
+  data: EditarUsuarioPayload,
+): Promise<EditarUsuarioResponse> {
+  return callEdgeFunction('admin', {
+    action: 'editar_usuario',
+    ...data,
+  })
+}
+
 export interface Configuracao {
   chave: string
   valor: string
