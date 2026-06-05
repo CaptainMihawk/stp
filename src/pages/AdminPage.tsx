@@ -10,7 +10,7 @@ import * as setoresService from '../services/setoresService'
 import {
   UserPlus, FolderPlus, Link, Users, Folder, UserX,
   Hash, User, Key, Building2, BadgeCheck, BadgeX,
-  Shield, ShieldOff, Lock,
+  Shield, ShieldOff, Lock, Pencil,
 } from 'lucide-react'
 
 export function AdminPage() {
@@ -37,6 +37,11 @@ export function AdminPage() {
   const [resetPasswordTarget, setResetPasswordTarget] = useState<{ id: string; nome: string } | null>(null)
   const [resetPasswordValue, setResetPasswordValue] = useState('')
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+
+  // Edit user modal
+  const [editUserTarget, setEditUserTarget] = useState<{ id: string; nome: string; matricula: string } | null>(null)
+  const [editNome, setEditNome] = useState('')
+  const [editMatricula, setEditMatricula] = useState('')
 
   // Configurações
   const [configuracoes, setConfiguracoes] = useState<adminService.Configuracao[]>([])
@@ -151,6 +156,40 @@ export function AdminPage() {
       setActionLoadingId(null)
     }
   }
+
+  async function handleEditarUsuario() {
+    if (!editUserTarget) return
+    const nome = editNome.trim()
+    const matricula = editMatricula.trim()
+    const nomeAlterado = nome !== editUserTarget.nome
+    const matriculaAlterada = matricula !== editUserTarget.matricula
+    if (!nomeAlterado && !matriculaAlterada) {
+      setAlertMessage({ text: 'Nenhum campo foi alterado.', error: true })
+      return
+    }
+    // Validações conforme Fluxo.md / AUTH.md: matrícula 4–12, nome 12–64
+    const validationError = validateUserFields(matricula, nome)
+    if (validationError) {
+      setAlertMessage({ text: validationError, error: true })
+      return
+    }
+    setActionLoadingId(editUserTarget.id)
+    try {
+      await adminService.editarUsuario({
+        profile_id: editUserTarget.id,
+        ...(nomeAlterado ? { nome_completo: editNome.trim() } : {}),
+        ...(matriculaAlterada ? { matricula: editMatricula.trim() } : {}),
+      })
+      setAlertMessage({ text: 'Usuário atualizado com sucesso.', error: false })
+      setEditUserTarget(null)
+      void loadUsers()
+    } catch (err) {
+      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao editar usuário.', error: true })
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
   async function loadSetores() {
     setIsSetoresLoading(true)
     try {
@@ -250,18 +289,37 @@ export function AdminPage() {
     }
   }, [selectedSetorId])
 
+  // --- Validações de campos (AUTH.md / Fluxo.md) ---
+  // matrícula: 4–12 caracteres | nome_completo: 10–64 caracteres
+  function validateUserFields(matricula: string, nome: string): string | null {
+    if (matricula.length < 4 || matricula.length > 12) {
+      return 'Matrícula deve ter entre 4 e 12 caracteres.'
+    }
+    if (nome.length < 10 || nome.length > 64) {
+      return 'Nome completo deve ter entre 10 e 64 caracteres.'
+    }
+    return null
+  }
+
   // Handle user creation
   async function handleCreateUser(e: React.SyntheticEvent) {
     e.preventDefault()
     setAlertMessage(null)
-    setActionLoading(true)
 
-    if (userForm.matricula.trim().length === 0 || userForm.nome_completo.trim().length === 0 || userForm.password.length < 6) {
-      setAlertMessage({ text: 'Preencha todos os campos obrigatórios. A senha deve ter no mínimo 6 caracteres.', error: true })
-      setActionLoading(false)
+    // Validações conforme AUTH.md: matrícula 4–12, nome 12–64, senha mín 6
+    const matricula = userForm.matricula.trim()
+    const nome = userForm.nome_completo.trim()
+    const validationError = validateUserFields(matricula, nome)
+    if (validationError) {
+      setAlertMessage({ text: validationError, error: true })
+      return
+    }
+    if (userForm.password.length < 6) {
+      setAlertMessage({ text: 'A senha deve ter no mínimo 6 caracteres.', error: true })
       return
     }
 
+    setActionLoading(true)
     try {
       await adminService.createUser({
         matricula: userForm.matricula.trim(),
@@ -767,6 +825,19 @@ export function AdminPage() {
                               >
                                 <Lock size={14} />
                               </button>
+                              <button
+                                type="button"
+                                className="ghost-button btn-sm"
+                                onClick={() => {
+                                  setEditUserTarget({ id: u.id, nome: u.nome_completo, matricula: u.matricula })
+                                  setEditNome(u.nome_completo)
+                                  setEditMatricula(u.matricula)
+                                }}
+                                disabled={actionLoadingId === u.id}
+                                title="Editar usuário"
+                              >
+                                <Pencil size={14} />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -867,6 +938,59 @@ export function AdminPage() {
           )}
         </div>
       </div>
+
+      {/* Edit User Modal */}
+      {editUserTarget && (
+        <div className="modal-overlay" onClick={() => { setEditUserTarget(null) }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Editar Usuário</h3>
+            <p className="modal-desc">
+              Alterar dados de <strong>{editUserTarget.nome}</strong>
+            </p>
+            <div className="modal-form">
+              <label>
+                Nome completo
+                <input
+                  type="text"
+                  value={editNome}
+                  onChange={(e) => setEditNome(e.target.value)}
+                  placeholder="Nome completo"
+                  autoFocus
+                />
+              </label>
+              <label>
+                Matrícula
+                <input
+                  type="text"
+                  value={editMatricula}
+                  onChange={(e) => setEditMatricula(e.target.value)}
+                  placeholder="Matrícula"
+                />
+              </label>
+              {alertMessage && (
+                <div className={alertMessage.error ? 'error-box' : 'info-box'}>{alertMessage.text}</div>
+              )}
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => { setEditUserTarget(null); setAlertMessage(null) }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => { setAlertMessage(null); void handleEditarUsuario() }}
+                  disabled={actionLoadingId === editUserTarget.id}
+                >
+                  {actionLoadingId === editUserTarget.id ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reset Password Modal */}
       {resetPasswordTarget && (
