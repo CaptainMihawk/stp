@@ -13,6 +13,10 @@
 - **lucide-react** (ícones)
 - **gh-pages** (deploy: `npm run deploy` → base `/stp/`)
 - CSS puro (design system em `styles.css`, sem framework CSS)
+- **`src/lib/useActivityLog.ts`** — Hook React com `useSyncExternalStore` → `{ entries, clear }`.
+- **Integração automática**: `errors.ts` (handleError/logSuccess) e `Toast.tsx` (addToast) já disparam para o activityLog.
+- **`ActivityLogPanel`** — Componente global no `Layout.tsx`. Botão FAB no canto inferior direito. Painel lateral (slide-in) com filtros por nível e lista detalhada.
+- **Estilos**: `.activity-log-fab`, `.activity-log-panel`, `.activity-log-entry`, etc. em `styles.css`.
 
 ## Estrutura
 
@@ -85,7 +89,10 @@ Revogação: gestor revoga direto; req/cedente pedem → gestor responde
 - **Participant ID**: `p.id ?? p.profile_id ?? ''` — edge function retorna `id` ou `profile_id` dependendo do endpoint
 - **Filtro mensal**: nativo no front-end (filter por `criado_em`), não no backend
 - **Admin histórico**: carregado sob demanda (só quando aba é acessada); trata erro 400 como "não implementado"
-- **Alertas**: `alertMessage` único com `{ text, error }` — sobrescreve, sem pilha
+- **Alertas**: `alertMessage` único com `{ text, error }` — sobrescreve, sem pilha (substituído por Toast + ConfirmDialog)
+- **ConfirmDialog**: `src/components/ConfirmDialog.tsx` — substitui `window.confirm()` em toda a app. Props: `open`, `title`, `message`, `confirmLabel`, `cancelLabel`, `confirmClass`, `loading`, `onConfirm`, `onCancel`. Usa `role="alertdialog"`, fecha com Escape, overlay com animação. Estilos em `styles.css` (`.confirm-overlay`, `.confirm-dialog`, etc.)
+- **AdminPage**: usa `confirmState` unificado para 4 confirmações (desativar usuário, desativar setor, reativar setor, desativar vínculo)
+- **RequestCard**: usa `cancelConfirmOpen` local para cancelar solicitação
 - **Editar usuário**: modal inline na tabela de usuários (✏️); envia só campos alterados; trata `MATRICULA_DUPLICADA`
 - **Editar/desativar setor**: botões ✏️/🗑️ nos cards de setor; modal inline para edição; confirm dialog para desativar
 - **Validação de campos**: `validateUserFields()` compartilhada (matrícula 4–12, nome 10–64) — usada em criar e editar usuário
@@ -107,9 +114,10 @@ Revogação: gestor revoga direto; req/cedente pedem → gestor responde
 - Sidebar: overlay + slide-in em mobile, fixa em desktop
 - Login: gradiente radial + glow effects
 
-## Deploy
+## Build / Deploy
 
 ```bash
+npm run build    # tsc -b && vite build — sempre rodar antes de entregar alterações
 npm run deploy   # build + gh-pages -d dist -t
 ```
 

@@ -4,6 +4,9 @@ import { Tabs, type TabOption } from '../components/Tabs'
 import { EmptyState } from '../components/EmptyState'
 import { SearchableSelect } from '../components/SearchableSelect'
 import { useAuth } from '../contexts/AuthContext'
+import { useToast } from '../components/Toast'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { handleError } from '../lib/errors'
 import type { Role, RoleSetor } from '../lib/types'
 import * as adminService from '../services/adminService'
 import * as setoresService from '../services/setoresService'
@@ -15,6 +18,7 @@ import {
 
 export function AdminPage() {
   const { profile: adminProfile } = useAuth()
+  const toast = useToast()
   const tabOptions: TabOption[] = [
     { id: 'usuarios', label: 'Usuários', icon: '👤' },
     { id: 'setores', label: 'Setores & Vínculos', icon: '🏢' },
@@ -83,8 +87,19 @@ export function AdminPage() {
   const [isMembrosLoading, setIsMembrosLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
 
-  // Status Alerts
-  const [alertMessage, setAlertMessage] = useState<{ text: string; error: boolean } | null>(null)
+  // Confirm dialog state
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    title: string
+    message: string
+    confirmLabel?: string
+    confirmClass?: 'danger-button' | 'success-button'
+    onConfirm: () => void
+  } | null>(null)
+
+  function closeConfirm() {
+    setConfirmState(null)
+  }
 
   // Load users list via Edge Function
   async function loadUsers() {
@@ -93,7 +108,7 @@ export function AdminPage() {
       const data = await adminService.listarUsuarios()
       setUsers(data)
     } catch (err) {
-      console.error('Erro ao carregar usuários:', err)
+      toast.error(handleError(err, { endpoint: 'admin', action: 'listar_usuarios' }))
     } finally {
       setIsUsersLoading(false)
     }
@@ -117,32 +132,49 @@ export function AdminPage() {
     setActionLoadingId(profileId)
     try {
       await adminService.ativarUsuario(profileId)
-      setAlertMessage({ text: 'Usuário ativado com sucesso.', error: false })
+      toast.success('Usuário ativado com sucesso.')
       void loadUsers()
     } catch (err) {
-      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao ativar usuário.', error: true })
+      toast.error(handleError(err, { endpoint: 'admin', action: 'ativar_usuario' }))
     } finally {
       setActionLoadingId(null)
     }
   }
 
   async function handleDesativarUsuario(profileId: string) {
-    if (!window.confirm('Tem certeza de que deseja desativar este usuário? O histórico de solicitações será preservado.')) return
-    setActionLoadingId(profileId)
-    try {
-      await adminService.desativarUsuario(profileId)
-      setAlertMessage({ text: 'Usuário desativado com sucesso.', error: false })
-      void loadUsers()
-    } catch (err) {
-      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao desativar usuário.', error: true })
-    } finally {
-      setActionLoadingId(null)
-    }
+    setConfirmState({
+      open: true,
+      title: 'Desativar usuário',
+      message: 'Tem certeza de que deseja desativar este usuário? O histórico de solicitações será preservado.',
+      confirmLabel: 'Desativar',
+      confirmClass: 'danger-button',
+      onConfirm: async () => {
+        closeConfirm()
+        setActionLoadingId(profileId)
+        try {
+          const result = await adminService.desativarUsuario(profileId)
+          let msg = 'Usuário desativado com sucesso.'
+          if (result.aviso) {
+            msg += ` ${result.aviso}`
+            if (result.setores_sem_gestor?.length) {
+              msg += ` Setores afetados: ${result.setores_sem_gestor.map(s => s.nome).join(', ')}.`
+            }
+          }
+          toast.success(msg)
+          void loadUsers()
+          void loadSetores()
+        } catch (err) {
+          toast.error(handleError(err, { endpoint: 'admin', action: 'desativar_usuario' }))
+        } finally {
+          setActionLoadingId(null)
+        }
+      },
+    })
   }
 
   async function handleResetarSenha() {
     if (!resetPasswordTarget || resetPasswordValue.length < 8) {
-      setAlertMessage({ text: 'A senha deve ter no mínimo 8 caracteres.', error: true })
+      toast.warning('A senha deve ter no mínimo 8 caracteres.')
       return
     }
     setActionLoadingId(resetPasswordTarget.id)
@@ -151,11 +183,11 @@ export function AdminPage() {
         profile_id: resetPasswordTarget.id,
         nova_senha: resetPasswordValue,
       })
-      setAlertMessage({ text: `Senha de ${resetPasswordTarget.nome} redefinida com sucesso.`, error: false })
+      toast.success(`Senha de ${resetPasswordTarget.nome} redefinida com sucesso.`)
       setResetPasswordTarget(null)
       setResetPasswordValue('')
     } catch (err) {
-      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao resetar senha.', error: true })
+      toast.error(handleError(err, { endpoint: 'admin', action: 'resetar_senha' }))
     } finally {
       setActionLoadingId(null)
     }
@@ -168,13 +200,13 @@ export function AdminPage() {
     const nomeAlterado = nome !== editUserTarget.nome
     const matriculaAlterada = matricula !== editUserTarget.matricula
     if (!nomeAlterado && !matriculaAlterada) {
-      setAlertMessage({ text: 'Nenhum campo foi alterado.', error: true })
+      toast.warning('Nenhum campo foi alterado.')
       return
     }
     // Validações conforme Fluxo.md / AUTH.md: matrícula 4–12, nome 12–64
     const validationError = validateUserFields(matricula, nome)
     if (validationError) {
-      setAlertMessage({ text: validationError, error: true })
+      toast.warning(validationError)
       return
     }
     setActionLoadingId(editUserTarget.id)
@@ -184,11 +216,11 @@ export function AdminPage() {
         ...(nomeAlterado ? { nome_completo: editNome.trim() } : {}),
         ...(matriculaAlterada ? { matricula: editMatricula.trim() } : {}),
       })
-      setAlertMessage({ text: 'Usuário atualizado com sucesso.', error: false })
+      toast.success('Usuário atualizado com sucesso.')
       setEditUserTarget(null)
       void loadUsers()
     } catch (err) {
-      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao editar usuário.', error: true })
+      toast.error(handleError(err, { endpoint: 'admin', action: 'editar_usuario' }))
     } finally {
       setActionLoadingId(null)
     }
@@ -198,42 +230,74 @@ export function AdminPage() {
     if (!editSetorTarget) return
     const nome = editSetorNome.trim()
     if (!nome) {
-      setAlertMessage({ text: 'O nome do setor não pode ficar vazio.', error: true })
+      toast.warning('O nome do setor não pode ficar vazio.')
       return
     }
     if (nome === editSetorTarget.nome) {
-      setAlertMessage({ text: 'Nenhum campo foi alterado.', error: true })
+      toast.warning('Nenhum campo foi alterado.')
       return
     }
     setActionLoadingId(`setor-${editSetorTarget.id}`)
     try {
       await setoresService.editarSetor(editSetorTarget.id, nome)
-      setAlertMessage({ text: 'Setor atualizado com sucesso.', error: false })
+      toast.success('Setor atualizado com sucesso.')
       setEditSetorTarget(null)
       void loadSetores()
     } catch (err) {
-      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao editar setor.', error: true })
+      toast.error(handleError(err, { endpoint: 'setores', action: 'editar_setor' }))
     } finally {
       setActionLoadingId(null)
     }
   }
 
   async function handleDesativarSetor(setorId: number, nome: string) {
-    if (!window.confirm(`Tem certeza que deseja desativar o setor "${nome}"? Todos os vínculos de membros serão desativados automaticamente.`)) return
-    setActionLoadingId(`setor-${setorId}`)
-    try {
-      await setoresService.desativarSetor(setorId)
-      setAlertMessage({ text: `Setor "${nome}" desativado com sucesso.`, error: false })
-      if (selectedSetorId === setorId) {
-        setSelectedSetorId(null)
-        setSelectedSetorMembros([])
-      }
-      void loadSetores()
-    } catch (err) {
-      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao desativar setor.', error: true })
-    } finally {
-      setActionLoadingId(null)
-    }
+    setConfirmState({
+      open: true,
+      title: 'Desativar setor',
+      message: `Tem certeza que deseja desativar o setor "${nome}"? Todos os vínculos de membros serão desativados automaticamente.`,
+      confirmLabel: 'Desativar',
+      confirmClass: 'danger-button',
+      onConfirm: async () => {
+        closeConfirm()
+        setActionLoadingId(`setor-${setorId}`)
+        try {
+          await setoresService.desativarSetor(setorId)
+          toast.success(`Setor "${nome}" desativado com sucesso.`)
+          if (selectedSetorId === setorId) {
+            setSelectedSetorId(null)
+            setSelectedSetorMembros([])
+          }
+          void loadSetores()
+        } catch (err) {
+          toast.error(handleError(err, { endpoint: 'setores', action: 'desativar_setor' }))
+        } finally {
+          setActionLoadingId(null)
+        }
+      },
+    })
+  }
+
+  async function handleReativarSetor(setorId: number, nome: string) {
+    setConfirmState({
+      open: true,
+      title: 'Reativar setor',
+      message: `Tem certeza que deseja reativar o setor "${nome}"? Os vínculos de membros deverão ser reativados separadamente.`,
+      confirmLabel: 'Reativar',
+      confirmClass: 'success-button',
+      onConfirm: async () => {
+        closeConfirm()
+        setActionLoadingId(`setor-${setorId}`)
+        try {
+          await setoresService.reativarSetor(setorId)
+          toast.success(`Setor "${nome}" reativado com sucesso.`)
+          void loadSetores()
+        } catch (err) {
+          toast.error(handleError(err, { endpoint: 'setores', action: 'reativar_setor' }))
+        } finally {
+          setActionLoadingId(null)
+        }
+      },
+    })
   }
 
   async function loadSetores() {
@@ -242,7 +306,7 @@ export function AdminPage() {
       const data = await setoresService.listarSetores()
       setSetores(data)
     } catch (err) {
-      console.error('Erro ao carregar setores:', err)
+      toast.error(handleError(err, { endpoint: 'setores', action: 'listar_setores' }))
     } finally {
       setIsSetoresLoading(false)
     }
@@ -255,7 +319,7 @@ export function AdminPage() {
       const data = await adminService.listarConfiguracoes()
       setConfiguracoes(data)
     } catch (err) {
-      console.error('Erro ao carregar configurações:', err)
+      toast.error(handleError(err, { endpoint: 'admin', action: 'listar_configuracoes' }))
     } finally {
       setIsConfigLoading(false)
     }
@@ -266,12 +330,12 @@ export function AdminPage() {
     setActionLoadingId(`config-${chave}`)
     try {
       await adminService.atualizarConfiguracao(chave, editConfigValor.trim())
-      setAlertMessage({ text: 'Configuração atualizada com sucesso.', error: false })
+      toast.success('Configuração atualizada com sucesso.')
       setEditConfigChave(null)
       setEditConfigValor('')
       void loadConfiguracoes()
     } catch (err) {
-      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao atualizar configuração.', error: true })
+      toast.error(handleError(err, { endpoint: 'admin', action: 'atualizar_configuracao' }))
     } finally {
       setActionLoadingId(null)
     }
@@ -289,9 +353,9 @@ export function AdminPage() {
       const message = err instanceof Error ? err.message : ''
       // Erro de action inválida (400) = não implementada, outros erros são temporários
       if (message.includes('inválida') || message.includes('not found')) {
-        console.warn('Histórico indisponível — ação listar_historico_admin não implementada no backend.')
+        toast.info('Histórico indisponível — ação não implementada no backend.')
       } else {
-        console.warn('Erro ao carregar histórico:', message)
+        toast.error(handleError(err, { endpoint: 'admin', action: 'listar_historico_admin' }))
       }
       setHistorico([])
       setHistoricoPagination(null)
@@ -307,7 +371,7 @@ export function AdminPage() {
       const data = await setoresService.listarMembrosSetor(setorId)
       setSelectedSetorMembros(data)
     } catch (err) {
-      console.error('Erro ao carregar membros do setor:', err)
+      toast.error(handleError(err, { endpoint: 'setores', action: 'listar_membros_setor' }))
       setSelectedSetorMembros([])
     } finally {
       setIsMembrosLoading(false)
@@ -350,18 +414,17 @@ export function AdminPage() {
   // Handle user creation
   async function handleCreateUser(e: React.SyntheticEvent) {
     e.preventDefault()
-    setAlertMessage(null)
 
     // Validações conforme AUTH.md: matrícula 4–12, nome 12–64, senha mín 6
     const matricula = userForm.matricula.trim()
     const nome = userForm.nome_completo.trim()
     const validationError = validateUserFields(matricula, nome)
     if (validationError) {
-      setAlertMessage({ text: validationError, error: true })
+      toast.warning(validationError)
       return
     }
     if (userForm.password.length < 6) {
-      setAlertMessage({ text: 'A senha deve ter no mínimo 6 caracteres.', error: true })
+      toast.warning('A senha deve ter no mínimo 6 caracteres.')
       return
     }
 
@@ -385,11 +448,11 @@ export function AdminPage() {
         role_setor: undefined
       })
 
-      setAlertMessage({ text: 'Usuário criado com sucesso.', error: false })
+      toast.success('Usuário criado com sucesso.')
       void loadUsers()
       void loadSetores()
     } catch (err) {
-      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao criar usuário.', error: true })
+      toast.error(handleError(err, { endpoint: 'admin', action: 'criar_usuario' }))
     } finally {
       setActionLoading(false)
     }
@@ -398,11 +461,10 @@ export function AdminPage() {
   // Handle sector creation
   async function handleCreateSetor(e: React.SyntheticEvent) {
     e.preventDefault()
-    setAlertMessage(null)
     setActionLoading(true)
 
     if (setorNome.trim().length === 0) {
-      setAlertMessage({ text: 'Nome do setor é obrigatório.', error: true })
+      toast.warning('Nome do setor é obrigatório.')
       setActionLoading(false)
       return
     }
@@ -410,10 +472,10 @@ export function AdminPage() {
     try {
       await setoresService.criarSetor(setorNome.trim())
       setSetorNome('')
-      setAlertMessage({ text: 'Setor criado com sucesso.', error: false })
+      toast.success('Setor criado com sucesso.')
       void loadSetores()
     } catch (err) {
-      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao criar setor.', error: true })
+      toast.error(handleError(err, { endpoint: 'setores', action: 'criar_setor' }))
     } finally {
       setActionLoading(false)
     }
@@ -422,11 +484,10 @@ export function AdminPage() {
   // Handle linking members
   async function handleVincularMembro(e: React.SyntheticEvent) {
     e.preventDefault()
-    setAlertMessage(null)
     setActionLoading(true)
 
     if (!linkSetorId || !linkProfileId) {
-      setAlertMessage({ text: 'Selecione o setor e o membro para vincular.', error: true })
+      toast.warning('Selecione o setor e o membro para vincular.')
       setActionLoading(false)
       return
     }
@@ -439,13 +500,13 @@ export function AdminPage() {
       })
 
       setLinkProfileId('')
-      setAlertMessage({ text: 'Vínculo adicionado com sucesso.', error: false })
+      toast.success('Vínculo adicionado com sucesso.')
       void loadSetores()
       if (selectedSetorId === Number(linkSetorId)) {
         void loadMembrosSetor(Number(linkSetorId))
       }
     } catch (err) {
-      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao vincular membro.', error: true })
+      toast.error(handleError(err, { endpoint: 'setores', action: 'vincular_membro' }))
     } finally {
       setActionLoading(false)
     }
@@ -453,19 +514,26 @@ export function AdminPage() {
 
   // Handle soft deleting/deactivating a link
   async function handleDesativarMembro(profileId: string, setorId: number) {
-    if (!window.confirm('Tem certeza de que deseja desativar este vínculo? O histórico de trocas será preservado.')) return
-    
-    setAlertMessage(null)
-    try {
-      await setoresService.desativarMembro(profileId, setorId)
-      setAlertMessage({ text: 'Vínculo desativado com sucesso.', error: false })
-      void loadSetores()
-      if (selectedSetorId === setorId) {
-        void loadMembrosSetor(setorId)
-      }
-    } catch (err) {
-      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao desativar vínculo.', error: true })
-    }
+    setConfirmState({
+      open: true,
+      title: 'Desativar vínculo',
+      message: 'Tem certeza de que deseja desativar este vínculo? O histórico de trocas será preservado.',
+      confirmLabel: 'Desativar',
+      confirmClass: 'danger-button',
+      onConfirm: async () => {
+        closeConfirm()
+        try {
+          await setoresService.desativarMembro(profileId, setorId)
+          toast.success('Vínculo desativado com sucesso.')
+          void loadSetores()
+          if (selectedSetorId === setorId) {
+            void loadMembrosSetor(setorId)
+          }
+        } catch (err) {
+          toast.error(handleError(err, { endpoint: 'setores', action: 'desativar_membro' }))
+        }
+      },
+    })
   }
 
   const staffUsers = users.filter((u) => u.role === 'FUNCIONARIO' || u.role === 'GESTOR')
@@ -490,7 +558,7 @@ export function AdminPage() {
             <Tabs
               options={tabOptions}
               activeTab={activeTab}
-              onChange={(tab) => { setActiveTab(tab); setAlertMessage(null) }}
+              onChange={(tab) => { setActiveTab(tab) }}
             />
           </section>
 
@@ -558,8 +626,6 @@ export function AdminPage() {
                   </div>
                 )}
 
-                {alertMessage && <div className={alertMessage.error ? 'error-box' : 'info-box'}>{alertMessage.text}</div>}
-
                 <button className="primary-button full-width" disabled={actionLoading}>
                   {actionLoading ? 'Criando...' : 'Criar Usuário'}
                 </button>
@@ -583,7 +649,6 @@ export function AdminPage() {
                     Nome do Setor
                     <input required value={setorNome} onChange={(e) => setSetorNome(e.target.value)} placeholder="Ex: UTI Adulto, Pronto Socorro" />
                   </label>
-                  {alertMessage && <div className={alertMessage.error ? 'error-box' : 'info-box'}>{alertMessage.text}</div>}
                   <button className="primary-button full-width" disabled={actionLoading}>{actionLoading ? 'Criando...' : 'Adicionar Setor'}</button>
                 </form>
               </section>
@@ -609,7 +674,6 @@ export function AdminPage() {
                     <SearchableSelect label="Colaborador" value={linkProfileId} onChange={setLinkProfileId} options={staffUserOptions} placeholder="Selecione..." searchPlaceholder="Buscar por nome ou matrícula..." required emptyMessage="Nenhum colaborador cadastrado" />
                     <label>Função<select value={linkRoleSetor} onChange={(e) => setLinkRoleSetor(e.target.value as RoleSetor)}><option value="MEMBRO">MEMBRO</option><option value="GESTOR">GESTOR</option></select></label>
                   </div>
-                  {alertMessage && <div className={alertMessage.error ? 'error-box' : 'info-box'}>{alertMessage.text}</div>}
                   <button className="primary-button full-width" disabled={actionLoading}>{actionLoading ? 'Vinculando...' : 'Registrar Vínculo'}</button>
                 </form>
               </section>
@@ -932,7 +996,7 @@ export function AdminPage() {
                           >
                             <Pencil size={14} />
                           </button>
-                          {s.ativo && (
+                          {s.ativo ? (
                             <button
                               type="button"
                               className="ghost-button btn-sm"
@@ -941,6 +1005,16 @@ export function AdminPage() {
                               title="Desativar setor"
                             >
                               <Trash2 size={14} />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="ghost-button btn-sm"
+                              onClick={() => handleReativarSetor(s.id, s.nome)}
+                              disabled={actionLoadingId === `setor-${s.id}`}
+                              title="Reativar setor"
+                            >
+                              <Shield size={14} />
                             </button>
                           )}
                         </div>
@@ -1029,21 +1103,18 @@ export function AdminPage() {
                   autoFocus
                 />
               </label>
-              {alertMessage && (
-                <div className={alertMessage.error ? 'error-box' : 'info-box'}>{alertMessage.text}</div>
-              )}
               <div className="modal-actions">
                 <button
                   type="button"
                   className="ghost-button"
-                  onClick={() => { setEditSetorTarget(null); setAlertMessage(null) }}
+                  onClick={() => { setEditSetorTarget(null) }}
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   className="primary-button"
-                  onClick={() => { setAlertMessage(null); void handleEditarSetor() }}
+                  onClick={() => { void handleEditarSetor() }}
                   disabled={actionLoadingId === `setor-${editSetorTarget.id}`}
                 >
                   {actionLoadingId === `setor-${editSetorTarget.id}` ? 'Salvando...' : 'Salvar'}
@@ -1082,21 +1153,18 @@ export function AdminPage() {
                   placeholder="Matrícula"
                 />
               </label>
-              {alertMessage && (
-                <div className={alertMessage.error ? 'error-box' : 'info-box'}>{alertMessage.text}</div>
-              )}
               <div className="modal-actions">
                 <button
                   type="button"
                   className="ghost-button"
-                  onClick={() => { setEditUserTarget(null); setAlertMessage(null) }}
+                  onClick={() => { setEditUserTarget(null) }}
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   className="primary-button"
-                  onClick={() => { setAlertMessage(null); void handleEditarUsuario() }}
+                  onClick={() => { void handleEditarUsuario() }}
                   disabled={actionLoadingId === editUserTarget.id}
                 >
                   {actionLoadingId === editUserTarget.id ? 'Salvando...' : 'Salvar'}
@@ -1147,6 +1215,16 @@ export function AdminPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmState?.open ?? false}
+        title={confirmState?.title ?? ''}
+        message={confirmState?.message ?? ''}
+        confirmLabel={confirmState?.confirmLabel}
+        confirmClass={confirmState?.confirmClass}
+        onConfirm={confirmState?.onConfirm ?? (() => {})}
+        onCancel={closeConfirm}
+      />
     </Layout>
   )
 }

@@ -5,6 +5,7 @@ import {
   podeSolicitarRevogacao,
 } from '../lib/solicitacaoRules'
 import { StatusPill } from './StatusPill'
+import { ConfirmDialog } from './ConfirmDialog'
 
 interface RequestCardProps {
   item: SolicitacaoListItem
@@ -28,6 +29,7 @@ export const RequestCard: React.FC<RequestCardProps> = ({
   const [revogacaoOpen, setRevogacaoOpen] = useState(false)
   const [justificativa, setJustificativa] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
 
   const participantId = (p: typeof item.requisitante) =>
     p.id ?? p.profile_id ?? ''
@@ -135,9 +137,7 @@ export const RequestCard: React.FC<RequestCardProps> = ({
           {showCancel && (
             <button type="button" className="ghost-button" style={{ flex: 1 }}
               disabled={isActionLoading}
-              onClick={() => {
-                if (window.confirm('Cancelar esta solicitação?')) void onCancel?.(item.id)
-              }}>
+              onClick={() => setCancelConfirmOpen(true)}>
               {isActionLoading ? '…' : 'Cancelar'}
             </button>
           )}
@@ -190,6 +190,19 @@ export const RequestCard: React.FC<RequestCardProps> = ({
           ❌ Solicitação revogada pelo gestor.
         </div>
       )}
+
+      <ConfirmDialog
+        open={cancelConfirmOpen}
+        title="Cancelar solicitação"
+        message="Cancelar esta solicitação?"
+        confirmLabel="Cancelar"
+        confirmClass="danger-button"
+        onConfirm={() => {
+          setCancelConfirmOpen(false)
+          void onCancel?.(item.id)
+        }}
+        onCancel={() => setCancelConfirmOpen(false)}
+      />
     </article>
   )
 }
