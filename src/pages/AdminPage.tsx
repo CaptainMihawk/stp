@@ -10,7 +10,7 @@ import * as setoresService from '../services/setoresService'
 import {
   UserPlus, FolderPlus, Link, Users, Folder, UserX,
   Hash, User, Key, Building2, BadgeCheck, BadgeX,
-  Shield, ShieldOff, Lock, Pencil,
+  Shield, ShieldOff, Lock, Pencil, Trash2,
 } from 'lucide-react'
 
 export function AdminPage() {
@@ -42,6 +42,10 @@ export function AdminPage() {
   const [editUserTarget, setEditUserTarget] = useState<{ id: string; nome: string; matricula: string } | null>(null)
   const [editNome, setEditNome] = useState('')
   const [editMatricula, setEditMatricula] = useState('')
+
+  // Edit sector modal
+  const [editSetorTarget, setEditSetorTarget] = useState<{ id: number; nome: string } | null>(null)
+  const [editSetorNome, setEditSetorNome] = useState('')
 
   // Configurações
   const [configuracoes, setConfiguracoes] = useState<adminService.Configuracao[]>([])
@@ -185,6 +189,48 @@ export function AdminPage() {
       void loadUsers()
     } catch (err) {
       setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao editar usuário.', error: true })
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  async function handleEditarSetor() {
+    if (!editSetorTarget) return
+    const nome = editSetorNome.trim()
+    if (!nome) {
+      setAlertMessage({ text: 'O nome do setor não pode ficar vazio.', error: true })
+      return
+    }
+    if (nome === editSetorTarget.nome) {
+      setAlertMessage({ text: 'Nenhum campo foi alterado.', error: true })
+      return
+    }
+    setActionLoadingId(`setor-${editSetorTarget.id}`)
+    try {
+      await setoresService.editarSetor(editSetorTarget.id, nome)
+      setAlertMessage({ text: 'Setor atualizado com sucesso.', error: false })
+      setEditSetorTarget(null)
+      void loadSetores()
+    } catch (err) {
+      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao editar setor.', error: true })
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  async function handleDesativarSetor(setorId: number, nome: string) {
+    if (!window.confirm(`Tem certeza que deseja desativar o setor "${nome}"? Todos os vínculos de membros serão desativados automaticamente.`)) return
+    setActionLoadingId(`setor-${setorId}`)
+    try {
+      await setoresService.desativarSetor(setorId)
+      setAlertMessage({ text: `Setor "${nome}" desativado com sucesso.`, error: false })
+      if (selectedSetorId === setorId) {
+        setSelectedSetorId(null)
+        setSelectedSetorMembros([])
+      }
+      void loadSetores()
+    } catch (err) {
+      setAlertMessage({ text: err instanceof Error ? err.message : 'Erro ao desativar setor.', error: true })
     } finally {
       setActionLoadingId(null)
     }
@@ -873,6 +919,31 @@ export function AdminPage() {
                           <span>Gestor: {s.gestor ? s.gestor.nome_completo : '—'}</span>
                           <span>{s.total_membros} membro(s)</span>
                         </div>
+                        <div className="setor-card-actions">
+                          <button
+                            type="button"
+                            className="ghost-button btn-sm"
+                            onClick={() => {
+                              setEditSetorTarget({ id: s.id, nome: s.nome })
+                              setEditSetorNome(s.nome)
+                            }}
+                            disabled={actionLoadingId === `setor-${s.id}`}
+                            title="Editar setor"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          {s.ativo && (
+                            <button
+                              type="button"
+                              className="ghost-button btn-sm"
+                              onClick={() => handleDesativarSetor(s.id, s.nome)}
+                              disabled={actionLoadingId === `setor-${s.id}`}
+                              title="Desativar setor"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -938,6 +1009,50 @@ export function AdminPage() {
           )}
         </div>
       </div>
+
+      {/* Edit Sector Modal */}
+      {editSetorTarget && (
+        <div className="modal-overlay" onClick={() => { setEditSetorTarget(null) }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Editar Setor</h3>
+            <p className="modal-desc">
+              Alterar nome de <strong>{editSetorTarget.nome}</strong>
+            </p>
+            <div className="modal-form">
+              <label>
+                Nome do setor
+                <input
+                  type="text"
+                  value={editSetorNome}
+                  onChange={(e) => setEditSetorNome(e.target.value)}
+                  placeholder="Nome do setor"
+                  autoFocus
+                />
+              </label>
+              {alertMessage && (
+                <div className={alertMessage.error ? 'error-box' : 'info-box'}>{alertMessage.text}</div>
+              )}
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => { setEditSetorTarget(null); setAlertMessage(null) }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => { setAlertMessage(null); void handleEditarSetor() }}
+                  disabled={actionLoadingId === `setor-${editSetorTarget.id}`}
+                >
+                  {actionLoadingId === `setor-${editSetorTarget.id}` ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit User Modal */}
       {editUserTarget && (
