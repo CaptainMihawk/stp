@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Check, X, Ban } from 'lucide-react'
+import { Check, X, Ban, AlertCircle } from 'lucide-react'
 import type { SolicitacaoListItem } from '../services/solicitacoesService'
 import {
   podeGestorHomologar,
@@ -99,13 +99,27 @@ export function GestorRequestCard({
       <div className="request-details">
         <div>
           <span>🔴 Requisitante</span>
-          <strong>{item.requisitante.nome_completo} ({item.requisitante.matricula})</strong>
+          <div className="gestor-participant-row">
+            <strong>{item.requisitante.nome_completo} ({item.requisitante.matricula})</strong>
+            {item.requisitante.bloqueado_mes && (
+              <span className="blocked-badge" title="Bloqueado para trocas neste mês">
+                <AlertCircle size={12} /> Bloqueado
+              </span>
+            )}
+          </div>
           <span className="gestor-plantao-label">📅 Plantão Cedido</span>
           <strong>{formatDate(item.data_requisitante)} · {item.turno_requisitante}</strong>
         </div>
         <div>
           <span>🟢 Cedente</span>
-          <strong>{item.cedente.nome_completo} ({item.cedente.matricula})</strong>
+          <div className="gestor-participant-row">
+            <strong>{item.cedente.nome_completo} ({item.cedente.matricula})</strong>
+            {item.cedente.bloqueado_mes && (
+              <span className="blocked-badge" title="Bloqueado para trocas neste mês">
+                <AlertCircle size={12} /> Bloqueado
+              </span>
+            )}
+          </div>
           <span className="gestor-plantao-label">📅 Plantão Solicitado</span>
           <strong>{formatDate(item.data_cedente)} · {item.turno_cedente}</strong>
         </div>

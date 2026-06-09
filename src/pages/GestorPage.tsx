@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ClipboardList, History, Clock, Calendar } from 'lucide-react'
+import { ClipboardList, History, Clock, Calendar, UserX, Users, ShieldAlert, Ban, Check } from 'lucide-react'
 import { Layout } from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -12,9 +12,10 @@ import { useToast } from '../components/Toast'
 import { handleError } from '../lib/errors'
 import type { StatusSolicitacao } from '../lib/types'
 import * as solicitacoesService from '../services/solicitacoesService'
+import * as setoresService from '../services/setoresService'
 
 export function GestorPage() {
-  const { profile } = useAuth()
+  const { profile, vinculosSetor } = useAuth()
   const toast = useToast()
 
   const [activeTab, setActiveTab] = useState<string>('pendentes')
@@ -24,6 +25,21 @@ export function GestorPage() {
   const [solicitacoes, setSolicitacoes] = useState<solicitacoesService.SolicitacaoListItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null)
+
+  // Usuários tab — gestão de bloqueios
+  const [usuariosSetorId, setUsuariosSetorId] = useState<string>('')
+  const [usuariosMes, setUsuariosMes] = useState<string>(() => {
+    const agora = new Date()
+    return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [membros, setMembros] = useState<setoresService.MembroSetor[]>([])
+  const [isLoadingMembros, setIsLoadingMembros] = useState(false)
+  const [acaoLoadingProfileId, setAcaoLoadingProfileId] = useState<string | null>(null)
+  const [blockFormProfileId, setBlockFormProfileId] = useState<string | null>(null)
+  const [blockFormMotivo, setBlockFormMotivo] = useState('')
+
+  // Get gestor's active sectors
+  const setoresGestor = vinculosSetor.filter(v => v.ativo && v.role_setor === 'GESTOR').map(v => v.setor)
 
   // Gera opções de meses (últimos 12 meses + mês atual)
   const mesOptions = (() => {
@@ -97,6 +113,7 @@ export function GestorPage() {
     { id: 'aguardando', label: 'Aguardando Cedente', icon: '⏳', badge: listAguardando.length },
     { id: 'aprovadas', label: 'Aprovadas', icon: '✅' },
     { id: 'historico', label: 'Histórico', icon: '📜' },
+    { id: 'usuarios', label: 'Usuários', icon: '👥' },
   ]
 
   async function withLoading<T>(id: number, fn: () => Promise<T>) {
@@ -158,6 +175,190 @@ export function GestorPage() {
     onHomologar: handleHomologar,
     onResponderRevogacao: handleResponderRevogacao,
     onRevogar: handleRevogar,
+  }
+
+  // ── Usuários tab — carregar membros ──
+  async function loadMembros() {
+    if (!usuariosSetorId) return
+    setIsLoadingMembros(true)
+    try {
+      const data = await setoresService.listarColegasSetor(Number(usuariosSetorId))
+      setMembros(data)
+    } catch (err) {
+      toast.error(handleError(err, { endpoint: 'setores', action: 'listar_membros_setor' }))
+    } finally {
+      setIsLoadingMembros(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'usuarios' && usuariosSetorId) {
+      void loadMembros()
+    }
+  }, [activeTab, usuariosSetorId, usuariosMes])
+
+  // ── Bloquear / Desbloquear ──
+
+  async function handleBloquearUsuario(profileId: string, motivo: string) {
+    if (!usuariosSetorId) return
+    setAcaoLoadingProfileId(profileId)
+    try {
+      await solicitacoesService.bloquearUsuarioMes({
+        profile_id: profileId,
+        setor_id: Number(usuariosSetorId),
+        mes_referencia: usuariosMes,
+        motivo: motivo || undefined,
+      })
+      toast.success('Usuário bloqueado para trocas neste mês.')
+      setBlockFormProfileId(null)
+      setBlockFormMotivo('')
+      await loadMembros()
+    } catch (err) {
+      toast.error(handleError(err, { endpoint: 'solicitacoes', action: 'bloquear_usuario_mes' }))
+    } finally {
+      setAcaoLoadingProfileId(null)
+    }
+  }
+
+  async function handleDesbloquearUsuario(profileId: string) {
+    if (!usuariosSetorId) return
+    setAcaoLoadingProfileId(profileId)
+    try {
+      await solicitacoesService.desbloquearUsuarioMes(profileId, Number(usuariosSetorId), usuariosMes)
+      toast.success('Bloqueio removido com sucesso.')
+      await loadMembros()
+    } catch (err) {
+      toast.error(handleError(err, { endpoint: 'solicitacoes', action: 'desbloquear_usuario_mes' }))
+    } finally {
+      setAcaoLoadingProfileId(null)
+    }
+  }
+
+
+
+  // ── Render: Usuários (bloqueios) ──
+  function renderUsuarios(): ReactNode {
+    if (!usuariosSetorId) {
+      return (
+        <EmptyState
+          title="Selecione um setor"
+          description="Escolha um setor e mês para gerenciar os bloqueios de troca."
+          icon="👥"
+        />
+      )
+    }
+
+    if (isLoadingMembros) {
+      return <div className="center-screen">Carregando membros...</div>
+    }
+
+    if (membros.length === 0) {
+      return (
+        <EmptyState
+          title="Nenhum membro encontrado"
+          description="Este setor não possui membros ativos."
+          icon="👥"
+        />
+      )
+    }
+
+    return (
+      <div className="usuarios-table-container">
+        <table className="usuarios-table">
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Matrícula</th>
+              <th>Status</th>
+              <th>Bloqueio</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {membros.map((m) => {
+              const loading = acaoLoadingProfileId === m.profile_id
+              const isBlocked = m.bloqueado_mes && !!m.bloqueio
+              const showForm = blockFormProfileId === m.profile_id
+
+              return (
+                <tr key={m.profile_id} className={isBlocked ? 'row-blocked' : ''}>
+                  <td className="usuario-name">{m.nome_completo}</td>
+                  <td className="usuario-matricula">{m.matricula}</td>
+                  <td>
+                    {isBlocked ? (
+                      <span className="blocked-badge" title="Bloqueado para trocas neste mês">
+                        <Ban size={12} /> Bloqueado
+                      </span>
+                    ) : (
+                      <span className="free-badge" title="Livre para trocas">
+                        <Check size={12} /> Livre
+                      </span>
+                    )}
+                  </td>
+                  <td className="usuario-bloqueio-info">
+                    {isBlocked && m.bloqueio ? (
+                      <span className="block-reason" title={`Motivo: ${m.bloqueio.motivo || 'Não informado'}`}>
+                        {m.bloqueio.motivo || '—'}
+                      </span>
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                  </td>
+                  <td className="usuario-acoes">
+                    {isBlocked ? (
+                      <button
+                        type="button"
+                        className="ghost-button small-button"
+                        onClick={() => handleDesbloquearUsuario(m.profile_id)}
+                        disabled={loading}
+                      >
+                        {loading ? '...' : <><UserX size={14} /> Desbloquear</>}
+                      </button>
+                    ) : showForm ? (
+                      <div className="block-inline-form">
+                        <input
+                          type="text"
+                          value={blockFormMotivo}
+                          onChange={(e) => setBlockFormMotivo(e.target.value)}
+                          placeholder="Motivo (opcional)"
+                          className="block-motivo-input"
+                          disabled={loading}
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          className="success-button small-button"
+                          onClick={() => handleBloquearUsuario(m.profile_id, blockFormMotivo)}
+                          disabled={loading}
+                        >
+                          {loading ? '...' : 'Confirmar'}
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost-button small-button"
+                          onClick={() => { setBlockFormProfileId(null); setBlockFormMotivo('') }}
+                          disabled={loading}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ghost-button small-button"
+                        onClick={() => setBlockFormProfileId(m.profile_id)}
+                      >
+                        <ShieldAlert size={14} /> Bloquear
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    )
   }
 
   function renderList(
@@ -264,6 +465,49 @@ export function GestorPage() {
       description: 'Trocas homologadas que ainda podem ser revogadas.',
       icon: '✅',
     })
+  } else if (activeTab === 'usuarios') {
+    tabContent = (
+      <div className="usuarios-tab-content">
+        <div className="usuarios-filters">
+          <div className="filter-group">
+            <label htmlFor="usuarios-setor">
+              Setor
+            </label>
+            <select
+              id="usuarios-setor"
+              value={usuariosSetorId}
+              onChange={(e) => {
+                setUsuariosSetorId(e.target.value)
+                setMembros([])
+                setBlockFormProfileId(null)
+              }}
+              className="filter-select"
+            >
+              <option value="">Selecione um setor</option>
+              {setoresGestor.map((s) => (
+                <option key={s.id} value={String(s.id)}>
+                  {s.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-group">
+            <label htmlFor="usuarios-mes">
+              <Calendar size={16} />
+              Mês
+            </label>
+            <input
+              id="usuarios-mes"
+              type="month"
+              value={usuariosMes}
+              onChange={(e) => setUsuariosMes(e.target.value)}
+              className="filter-select"
+            />
+          </div>
+        </div>
+        {renderUsuarios()}
+      </div>
+    )
   } else {
     tabContent = renderList(
       listHistorico,
@@ -281,57 +525,61 @@ export function GestorPage() {
       <div className="grid two-columns">
         <section className="panel gestor-main-section">
           <h2 className="gestor-section-title">
-            <ClipboardList size={22} />
-            Homologação de Trocas
+            {activeTab === 'usuarios' ? <Users size={22} /> : <ClipboardList size={22} />}
+            {activeTab === 'usuarios' ? 'Usuários e Bloqueios' : 'Homologação de Trocas'}
           </h2>
           <p className="gestor-section-desc">
-            Homologue trocas, responda pedidos de revogação ou revogue solicitações ativas do setor.
+            {activeTab === 'usuarios'
+              ? 'Visualize e gerencie bloqueios de troca dos membros do setor.'
+              : 'Homologue trocas, responda pedidos de revogação ou revogue solicitações ativas do setor.'}
           </p>
 
           <Tabs options={tabOptions} activeTab={activeTab} onChange={setActiveTab} />
 
-          {/* Filtros */}
-          <div className="gestor-filters">
-            <div className="filter-group">
-              <label htmlFor="mes-filtro">
-                <Calendar size={16} />
-                Mês
-              </label>
-              <select
-                id="mes-filtro"
-                value={mesFiltro}
-                onChange={(e) => setMesFiltro(e.target.value)}
-                className="filter-select"
-              >
-                {mesOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+          {/* Filtros condicionais */}
+          {activeTab !== 'usuarios' && (
+            <div className="gestor-filters">
+              <div className="filter-group">
+                <label htmlFor="mes-filtro">
+                  <Calendar size={16} />
+                  Mês
+                </label>
+                <select
+                  id="mes-filtro"
+                  value={mesFiltro}
+                  onChange={(e) => setMesFiltro(e.target.value)}
+                  className="filter-select"
+                >
+                  {mesOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-group">
+                <label htmlFor="status-filtro">
+                  Status
+                </label>
+                <select
+                  id="status-filtro"
+                  value={statusFiltro}
+                  onChange={(e) => setStatusFiltro(e.target.value as StatusSolicitacao | '')}
+                  className="filter-select"
+                >
+                  <option value="">Todos os status</option>
+                  <option value="aguardando_cedente">Aguardando Cedente</option>
+                  <option value="pendente">Pendente</option>
+                  <option value="aprovado">Aprovado</option>
+                  <option value="recusado_cedente">Recusado pelo Cedente</option>
+                  <option value="recusado_gestor">Recusado pelo Gestor</option>
+                  <option value="cancelado">Cancelado</option>
+                  <option value="pedido_revogacao">Pedido de Revogação</option>
+                  <option value="revogado">Revogado</option>
+                </select>
+              </div>
             </div>
-            <div className="filter-group">
-              <label htmlFor="status-filtro">
-                Status
-              </label>
-              <select
-                id="status-filtro"
-                value={statusFiltro}
-                onChange={(e) => setStatusFiltro(e.target.value as StatusSolicitacao | '')}
-                className="filter-select"
-              >
-                <option value="">Todos os status</option>
-                <option value="aguardando_cedente">Aguardando Cedente</option>
-                <option value="pendente">Pendente</option>
-                <option value="aprovado">Aprovado</option>
-                <option value="recusado_cedente">Recusado pelo Cedente</option>
-                <option value="recusado_gestor">Recusado pelo Gestor</option>
-                <option value="cancelado">Cancelado</option>
-                <option value="pedido_revogacao">Pedido de Revogação</option>
-                <option value="revogado">Revogado</option>
-              </select>
-            </div>
-          </div>
+          )}
 
           <div className="gestor-tab-content">
             {tabContent}
