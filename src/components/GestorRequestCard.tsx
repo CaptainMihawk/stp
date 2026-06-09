@@ -80,126 +80,130 @@ export function GestorRequestCard({
 
   return (
     <article className="request-card gestor-card-item">
-      <div className="request-head">
-        <div>
-          <h4 className="gestor-card-title">Troca #{item.id}</h4>
-          {item.setor && (
-            <span className="gestor-card-setor">🏥 {item.setor.nome}</span>
-          )}
-          <span className="request-date gestor-card-date">
-            {showFinalizedDate ? 'Finalizada em: ' : 'Criada em: '}
-            {item.respondido_em && showFinalizedDate
-              ? formatDateTime(item.respondido_em)
-              : formatDateTime(item.criado_em)}
-          </span>
-        </div>
-        <StatusPill status={item.status} />
-      </div>
-
-      <div className="request-details">
-        <div>
-          <span>🔴 Requisitante</span>
-          <div className="gestor-participant-row">
-            <strong>{item.requisitante.nome_completo} ({item.requisitante.matricula})</strong>
-            {item.requisitante.bloqueado_mes && (
-              <span className="blocked-badge" title="Bloqueado para trocas neste mês">
-                <AlertCircle size={12} /> Bloqueado
+      <div className="gestor-card-layout">
+        <div className="gestor-card-body">
+          <div className="request-head">
+            <div>
+              <h4 className="gestor-card-title">Troca #{item.id}</h4>
+              {item.setor && (
+                <span className="gestor-card-setor">🏥 {item.setor.nome}</span>
+              )}
+              <span className="request-date gestor-card-date">
+                {showFinalizedDate ? 'Finalizada em: ' : 'Criada em: '}
+                {item.respondido_em && showFinalizedDate
+                  ? formatDateTime(item.respondido_em)
+                  : formatDateTime(item.criado_em)}
               </span>
-            )}
+            </div>
+            <StatusPill status={item.status} />
           </div>
-          <span className="gestor-plantao-label">📅 Plantão Cedido</span>
-          <strong>{formatDate(item.data_requisitante)} · {item.turno_requisitante}</strong>
-        </div>
-        <div>
-          <span>🟢 Cedente</span>
-          <div className="gestor-participant-row">
-            <strong>{item.cedente.nome_completo} ({item.cedente.matricula})</strong>
-            {item.cedente.bloqueado_mes && (
-              <span className="blocked-badge" title="Bloqueado para trocas neste mês">
-                <AlertCircle size={12} /> Bloqueado
-              </span>
-            )}
+
+          <div className="request-details">
+            <div>
+              <span>🔴 Requisitante</span>
+              <div className="gestor-participant-row">
+                <strong>{item.requisitante.nome_completo} ({item.requisitante.matricula})</strong>
+                {item.requisitante.bloqueado_mes && (
+                  <span className="blocked-badge" title="Bloqueado para trocas neste mês">
+                    <AlertCircle size={12} /> Bloqueado
+                  </span>
+                )}
+              </div>
+              <span className="gestor-plantao-label">📅 Plantão Cedido</span>
+              <strong>{formatDate(item.data_requisitante)} · {item.turno_requisitante}</strong>
+            </div>
+            <div>
+              <span>🟢 Cedente</span>
+              <div className="gestor-participant-row">
+                <strong>{item.cedente.nome_completo} ({item.cedente.matricula})</strong>
+                {item.cedente.bloqueado_mes && (
+                  <span className="blocked-badge" title="Bloqueado para trocas neste mês">
+                    <AlertCircle size={12} /> Bloqueado
+                  </span>
+                )}
+              </div>
+              <span className="gestor-plantao-label">📅 Plantão Solicitado</span>
+              <strong>{formatDate(item.data_cedente)} · {item.turno_cedente}</strong>
+            </div>
           </div>
-          <span className="gestor-plantao-label">📅 Plantão Solicitado</span>
-          <strong>{formatDate(item.data_cedente)} · {item.turno_cedente}</strong>
-        </div>
-      </div>
 
-      {item.observacao && (
-        <p className="request-obs">
-          <strong>Observação:</strong> {item.observacao}
-        </p>
-      )}
-
-      {item.justificativa_revogacao && (
-        <p className="request-obs gestor-obs-warning">
-          <strong>Pedido de revogação:</strong> {item.justificativa_revogacao}
-        </p>
-      )}
-
-      {item.replica_gestor && (
-        <p className={`request-reply ${item.status === 'recusado_gestor' ? 'rejected' : ''}`}>
-          <strong>Sua réplica:</strong> {item.replica_gestor}
-        </p>
-      )}
-
-      {panel === null && (
-        <div className="actions-row gestor-actions-row">
-          {showHomologar && (
-            <>
-              <button
-                type="button"
-                className="success-button gestor-action-btn"
-                onClick={() => {
-                  setAprovar(true)
-                  setPanel('homologar')
-                }}
-              >
-                <Check size={16} /> Homologar
-              </button>
-              <button
-                type="button"
-                className="danger-button gestor-action-btn"
-                onClick={() => {
-                  setAprovar(false)
-                  setPanel('homologar')
-                }}
-              >
-                <X size={16} /> Recusar
-              </button>
-            </>
+          {item.observacao && (
+            <p className="request-obs">
+              <strong>Observação:</strong> {item.observacao}
+            </p>
           )}
-          {showResponderRevogacao && (
-            <>
-              <button
-                type="button"
-                className="success-button gestor-action-btn"
-                disabled={loading}
-                onClick={() => void submitRevogacaoResponse(true)}
-              >
-                Aceitar revogação
-              </button>
+
+          {item.justificativa_revogacao && (
+            <p className="request-obs gestor-obs-warning">
+              <strong>Pedido de revogação:</strong> {item.justificativa_revogacao}
+            </p>
+          )}
+
+          {item.replica_gestor && (
+            <p className={`request-reply ${item.status === 'recusado_gestor' ? 'rejected' : ''}`}>
+              <strong>Sua réplica:</strong> {item.replica_gestor}
+            </p>
+          )}
+        </div>
+
+        {panel === null && (
+          <div className="gestor-card-actions">
+            {showHomologar && (
+              <>
+                <button
+                  type="button"
+                  className="success-button gestor-action-btn"
+                  onClick={() => {
+                    setAprovar(true)
+                    setPanel('homologar')
+                  }}
+                >
+                  <Check size={16} /> Homologar
+                </button>
+                <button
+                  type="button"
+                  className="danger-button gestor-action-btn"
+                  onClick={() => {
+                    setAprovar(false)
+                    setPanel('homologar')
+                  }}
+                >
+                  <X size={16} /> Recusar
+                </button>
+              </>
+            )}
+            {showResponderRevogacao && (
+              <>
+                <button
+                  type="button"
+                  className="success-button gestor-action-btn"
+                  disabled={loading}
+                  onClick={() => void submitRevogacaoResponse(true)}
+                >
+                  Aceitar revogação
+                </button>
+                <button
+                  type="button"
+                  className="ghost-button gestor-action-btn"
+                  disabled={loading}
+                  onClick={() => void submitRevogacaoResponse(false)}
+                >
+                  Manter solicitação
+                </button>
+              </>
+            )}
+            {showRevogar && !showResponderRevogacao && (
               <button
                 type="button"
                 className="ghost-button gestor-action-btn"
-                disabled={loading}
-                onClick={() => void submitRevogacaoResponse(false)}
+                onClick={() => setPanel('revogar')}
               >
-                Manter solicitação
+                <Ban size={16} /> Revogar
               </button>
-            </>
-          )}
-          {showRevogar && !showResponderRevogacao && (
-            <button
-              type="button"
-              className="ghost-button gestor-action-btn"
-              onClick={() => setPanel('revogar')}
-            >
-              <Ban size={16} /> Revogar
-            </button>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
 
       {panel === 'homologar' && (
         <ActionPanel

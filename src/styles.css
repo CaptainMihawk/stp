@@ -2381,24 +2381,28 @@ tbody tr:hover {
   cursor: not-allowed;
 }
 
-.gestor-audit-section {
+.gestor-audit-bar {
   display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.gestor-audit-box {
-  display: flex;
-  gap: 10px;
   align-items: center;
-}
-
-.gestor-audit-box svg {
-  flex-shrink: 0;
-}
-
-.gestor-audit-box div {
+  gap: 10px;
+  padding: 12px 16px;
+  margin-top: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.gestor-audit-bar svg {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.gestor-audit-bar strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 /* --- Gestor Bloqueios Section --- */
@@ -2611,6 +2615,67 @@ tbody tr:hover {
   }
 }
 
+/* Card: conteúdo à esquerda, ações à direita */
+.gestor-card-item {
+  padding: 0 !important;
+}
+
+.gestor-card-layout {
+  display: flex;
+  gap: 0;
+}
+
+.gestor-card-body {
+  flex: 1;
+  min-width: 0;
+  padding: 16px;
+}
+
+.gestor-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-left: 1px solid var(--border);
+  background: var(--surface-active);
+  min-width: 140px;
+  max-width: 180px;
+  justify-content: center;
+}
+
+.gestor-card-actions .gestor-action-btn {
+  flex: none;
+  width: 100%;
+  min-width: auto;
+  font-size: 0.75rem;
+  padding: 8px 10px;
+  justify-content: center;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .gestor-card-layout {
+    flex-direction: column;
+  }
+
+  .gestor-card-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    min-width: auto;
+    max-width: none;
+    padding: 12px 16px;
+  }
+
+  .gestor-card-actions .gestor-action-btn {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.8rem;
+    padding: 10px 8px;
+  }
+}
+
 .gestor-loading {
   min-height: 100px;
 }
@@ -2663,18 +2728,14 @@ tbody tr:hover {
 .usuarios-tab-content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .usuarios-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  padding: 12px 0;
-}
-
-.usuarios-table-container {
-  overflow-x: auto;
+  gap: 12px;
+  padding: 8px 0;
 }
 
 .usuarios-table {
@@ -2685,15 +2746,16 @@ tbody tr:hover {
 
 .usuarios-table th,
 .usuarios-table td {
-  padding: 10px 12px;
+  padding: 8px 10px;
   text-align: left;
   border-bottom: 1px solid var(--border);
+  vertical-align: middle;
 }
 
 .usuarios-table th {
   font-weight: 700;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   background: var(--surface-active);
@@ -2710,43 +2772,41 @@ tbody tr:hover {
 
 .usuario-name {
   font-weight: 600;
-  white-space: nowrap;
 }
 
 .usuario-matricula {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-family: var(--font-mono, monospace);
 }
 
 .usuario-bloqueio-info {
-  max-width: 200px;
+  max-width: 180px;
 }
 
 .block-reason {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   display: block;
+  word-break: break-word;
+  line-height: 1.3;
 }
 
 .usuario-acoes {
   white-space: nowrap;
+  text-align: right;
 }
 
 .block-inline-form {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: nowrap;
+  gap: 4px;
 }
 
 .block-motivo-input {
-  width: 140px;
-  padding: 6px 10px;
-  font-size: 0.78rem;
+  width: 120px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
   font-family: var(--font-body);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -2764,14 +2824,65 @@ tbody tr:hover {
 .free-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.72rem;
+  gap: 3px;
+  font-size: 0.7rem;
   font-weight: 600;
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-radius: 999px;
   color: var(--success, #16a34a);
   background: rgba(22, 163, 74, 0.08);
   white-space: nowrap;
+}
+
+/* Mobile: cards em vez de tabela */
+@media (max-width: 640px) {
+  .usuarios-table thead {
+    display: none;
+  }
+
+  .usuarios-table,
+  .usuarios-table tbody,
+  .usuarios-table tr,
+  .usuarios-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .usuarios-table tr {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+
+  .usuarios-table td {
+    border: none;
+    padding: 3px 0;
+    text-align: left !important;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .usuarios-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    min-width: 70px;
+    flex-shrink: 0;
+  }
+
+  .usuario-acoes {
+    margin-top: 6px;
+  }
+
+  .block-inline-form {
+    width: 100%;
+  }
 }
 
 /* ==========================================================================

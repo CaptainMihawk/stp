@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ClipboardList, History, Clock, Calendar, UserX, Users, ShieldAlert, Ban, Check } from 'lucide-react'
+import { ClipboardList, History, UserX, Users, ShieldAlert, Ban, Check } from 'lucide-react'
 import { Layout } from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -19,7 +19,10 @@ export function GestorPage() {
   const toast = useToast()
 
   const [activeTab, setActiveTab] = useState<string>('pendentes')
-  const [mesFiltro, setMesFiltro] = useState<string>('') // formato YYYY-MM
+  const [mesFiltro, setMesFiltro] = useState<string>(() => {
+    const agora = new Date()
+    return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`
+  })
   const [statusFiltro, setStatusFiltro] = useState<StatusSolicitacao | ''>('')
 
   const [solicitacoes, setSolicitacoes] = useState<solicitacoesService.SolicitacaoListItem[]>([])
@@ -41,15 +44,15 @@ export function GestorPage() {
   // Get gestor's active sectors
   const setoresGestor = vinculosSetor.filter(v => v.ativo && v.role_setor === 'GESTOR').map(v => v.setor)
 
-  // Gera opções de meses (últimos 12 meses + mês atual)
+  // Gera opções de meses (12 últimos meses, ordem crescente)
   const mesOptions = (() => {
     const options = [{ value: '', label: 'Todos os meses' }]
     const now = new Date()
-    for (let i = 0; i < 12; i++) {
+    for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-      options.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })
+      const label = `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+      options.push({ value, label })
     }
     return options
   })()
@@ -263,48 +266,47 @@ export function GestorPage() {
     }
 
     return (
-      <div className="usuarios-table-container">
-        <table className="usuarios-table">
-          <thead>
-            <tr>
-              <th>Colaborador</th>
-              <th>Matrícula</th>
-              <th>Status</th>
-              <th>Bloqueio</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {membros.map((m) => {
-              const loading = acaoLoadingProfileId === m.profile_id
-              const isBlocked = m.bloqueado_mes && !!m.bloqueio
-              const showForm = blockFormProfileId === m.profile_id
+      <table className="usuarios-table">
+        <thead>
+          <tr>
+            <th>Colaborador</th>
+            <th>Matrícula</th>
+            <th>Status</th>
+            <th>Bloqueio</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {membros.filter(m => m.profile_id !== profile?.id).map((m) => {
+            const loading = acaoLoadingProfileId === m.profile_id
+            const isBlocked = m.bloqueado_mes && !!m.bloqueio
+            const showForm = blockFormProfileId === m.profile_id
 
-              return (
-                <tr key={m.profile_id} className={isBlocked ? 'row-blocked' : ''}>
-                  <td className="usuario-name">{m.nome_completo}</td>
-                  <td className="usuario-matricula">{m.matricula}</td>
-                  <td>
-                    {isBlocked ? (
-                      <span className="blocked-badge" title="Bloqueado para trocas neste mês">
-                        <Ban size={12} /> Bloqueado
-                      </span>
-                    ) : (
-                      <span className="free-badge" title="Livre para trocas">
-                        <Check size={12} /> Livre
-                      </span>
-                    )}
-                  </td>
-                  <td className="usuario-bloqueio-info">
-                    {isBlocked && m.bloqueio ? (
-                      <span className="block-reason" title={`Motivo: ${m.bloqueio.motivo || 'Não informado'}`}>
-                        {m.bloqueio.motivo || '—'}
-                      </span>
-                    ) : (
-                      <span className="muted">—</span>
-                    )}
-                  </td>
-                  <td className="usuario-acoes">
+            return (
+              <tr key={m.profile_id} className={isBlocked ? 'row-blocked' : ''}>
+                <td data-label="Colaborador" className="usuario-name">{m.nome_completo}</td>
+                <td data-label="Matrícula" className="usuario-matricula">{m.matricula}</td>
+                <td data-label="Status">
+                  {isBlocked ? (
+                    <span className="blocked-badge" title="Bloqueado para trocas neste mês">
+                      <Ban size={12} /> Bloqueado
+                    </span>
+                  ) : (
+                    <span className="free-badge" title="Livre para trocas">
+                      <Check size={12} /> Livre
+                    </span>
+                  )}
+                </td>
+                <td data-label="Bloqueio" className="usuario-bloqueio-info">
+                  {isBlocked && m.bloqueio ? (
+                    <span className="block-reason" title={`Motivo: ${m.bloqueio.motivo || 'Não informado'}`}>
+                      {m.bloqueio.motivo || '—'}
+                    </span>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
+                </td>
+                <td data-label="Ações" className="usuario-acoes">
                     {isBlocked ? (
                       <button
                         type="button"
@@ -357,7 +359,6 @@ export function GestorPage() {
             })}
           </tbody>
         </table>
-      </div>
     )
   }
 
@@ -493,7 +494,6 @@ export function GestorPage() {
           </div>
           <div className="filter-group">
             <label htmlFor="usuarios-mes">
-              <Calendar size={16} />
               Mês
             </label>
             <input
@@ -522,7 +522,7 @@ export function GestorPage() {
 
   return (
     <Layout title="Portal de Gestão & Homologação">
-      <div className="grid two-columns">
+      <div className="grid">
         <section className="panel gestor-main-section">
           <h2 className="gestor-section-title">
             {activeTab === 'usuarios' ? <Users size={22} /> : <ClipboardList size={22} />}
@@ -541,7 +541,6 @@ export function GestorPage() {
             <div className="gestor-filters">
               <div className="filter-group">
                 <label htmlFor="mes-filtro">
-                  <Calendar size={16} />
                   Mês
                 </label>
                 <select
@@ -585,24 +584,13 @@ export function GestorPage() {
             {tabContent}
           </div>
         </section>
+      </div>
 
-        <section className="panel gestor-audit-section">
-          <div>
-            <h2 className="gestor-section-title">
-              <History size={20} />
-              Auditoria de Escala
-            </h2>
-            <p className="gestor-section-desc">
-              Cancelamentos e revogações também ficam registrados com carimbo de data/hora.
-            </p>
-            <div className="info-box gestor-audit-box">
-              <Clock size={28} />
-              <div>
-                Atualizações em tempo real. Pedidos de revogação exigem sua decisão na aba dedicada.
-              </div>
-            </div>
-          </div>
-        </section>
+      <div className="gestor-audit-bar">
+        <History size={18} />
+        <div>
+          <strong>Auditoria de Escala</strong> — Cancelamentos e revogações ficam registrados com carimbo de data/hora. Atualizações em tempo real. Pedidos de revogação exigem sua decisão na aba dedicada.
+        </div>
       </div>
     </Layout>
   )
