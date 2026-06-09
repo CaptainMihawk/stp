@@ -67,6 +67,7 @@ Todas as operações usam o mesmo endpoint. O comportamento é definido pelo cam
 - `turno_requisitante` e `turno_cedente` devem pertencer ao mesmo grupo de carga horária → se divergir, retorna erro `TURNOS_INCOMPATIVEIS`.
 - A solicitação nasce com status `aguardando_cedente`.
 - O limite mensal é compartilhado: conta todas as solicitações do mês onde o usuário aparece como `requisitante_id` **ou** `cedente_id`, com status diferente de `cancelado`, `recusado_cedente` ou `recusado_gestor`. Se o total atingir `limite_solicitacoes_mensal` (configurável via `/admin`, padrão 5), retorna erro `LIMITE_MENSAL`.
+- O mês de referência do bloqueio é derivado de `data_requisitante`. Se o **requisitante** estiver bloqueado neste setor e mês, retorna erro `USUARIO_BLOQUEADO_MES`. Se o **cedente** estiver bloqueado, também retorna `USUARIO_BLOQUEADO_MES` — com mensagem distinta indicando que o problema é o cedente.
 
 **Response 201**
 
@@ -351,6 +352,7 @@ ou
 
 - Retorna o profile do usuário logado e seus vínculos ativos em setores.
 - Vínculos inativos não são retornados.
+- Retorna também `bloqueios`: array com os bloqueios ativos do mês corrente do usuário logado. Array vazio `[]` se não houver bloqueio.
 
 **Response 200**
 
@@ -369,7 +371,15 @@ ou
     "role_setor": "MEMBRO",
     "ativo": true,
     "setor": { "id": 1, "nome": "UTI" }
-  }]
+  }],
+  "bloqueios": [
+    {
+      "setor_id": 1,
+      "setor_nome": "UTI",
+      "mes_referencia": "2026-06",
+      "motivo": "Excesso de trocas no período"
+    }
+  ]
 }
 ```
 
@@ -398,6 +408,7 @@ ou
 - Inclui `aprovacao`, `replica_gestor` e `respondido_em`.
 - `status` é opcional — filtra por status específico. Valores aceitos: `aguardando_cedente`, `pendente`, `aprovado`, `recusado_cedente`, `recusado_gestor`, `cancelado`, `pedido_revogacao`, `revogado`.
 - `mes` é opcional — formato `YYYY-MM` (ex: `"2026-06"`), filtra por `criado_em`. Os dois filtros são independentes e combináveis.
+- Cada item retorna `bloqueado_mes` no objeto `requisitante` e `cedente`, indicando se o usuário está bloqueado neste setor no mês corrente.
 
 **Response 200**
 
@@ -406,8 +417,8 @@ ou
   "data": [{
     "id": 42,
     "status": "aprovado",
-    "requisitante": { "nome_completo": "...", "matricula": "..." },
-    "cedente": { "nome_completo": "...", "matricula": "..." },
+    "requisitante": { "id": "uuid", "nome_completo": "...", "matricula": "...", "bloqueado_mes": false },
+    "cedente": { "id": "uuid", "nome_completo": "...", "matricula": "...", "bloqueado_mes": true },
     "setor": { "id": 1, "nome": "UTI" },
     "observacao": "...",
     "data_requisitante": "2026-06-01",
@@ -473,6 +484,77 @@ ou
 }
 ```
 
+## bloquear_usuario_mes
+
+**Quem pode usar:** ADMIN ou GESTOR ativo do setor
+
+**Body**
+
+```json
+
+{
+  "action": "bloquear_usuario_mes",
+  "profile_id": "uuid",
+  "setor_id": 1,
+  "mes_referencia": "2026-06",
+  "motivo": "texto opcional"
+}
+
+```
+
+**Regras de negócio**
+
+- ADMIN pode bloquear em qualquer setor.
+- GESTOR só pode bloquear usuários do seu próprio setor (onde possui `role_setor = 'GESTOR'` e `ativo = true`).
+- Não é possível bloquear a si mesmo → erro `SELF_REQUEST`.
+- O usuário alvo precisa ter vínculo ativo no setor → erro `NOT_FOUND` caso contrário.
+- `mes_referencia` deve estar no formato `YYYY-MM`.
+- Se já existir bloqueio para o mesmo `(profile_id, setor_id, mes_referencia)` → erro `CONFLICT`.
+- `motivo` é opcional.
+
+**Response 200**
+
+```json
+{ 
+  "success": true, 
+  "profile_id": "uuid", 
+  "setor_id": 1, 
+  "mes_referencia": "2026-06" 
+}
+```
+​
+
+## desbloquear_usuario_mes
+
+**Quem pode usar:** ADMIN ou GESTOR ativo do setor
+
+**Body**
+
+```json
+{
+  "action": "desbloquear_usuario_mes",
+  "profile_id": "uuid",
+  "setor_id": 1,
+  "mes_referencia": "2026-06"
+}
+```
+
+**Regras de negócio**
+
+- ADMIN pode desbloquear em qualquer setor.
+- GESTOR só pode desbloquear usuários do seu próprio setor.
+- Se o bloqueio não existir → erro `NOT_FOUND`.
+
+**Response 200**
+
+```json
+{ 
+  "success": true, 
+  "profile_id": "uuid", 
+  "setor_id": 1, 
+  "mes_referencia": "2026-06" 
+}
+```
 
 ---
 # Setores
@@ -611,6 +693,7 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 - ADMIN vê qualquer setor.
 - Qualquer membro com vínculo ativo no setor pode listar.
 - Usuários sem vínculo no setor não têm acesso.
+- Retorna `bloqueado_mes` e `bloqueio` por membro, com base no mês corrente. `bloqueio` é `null` quando `bloqueado_mes = false`.
 
 **Response 200**
 
@@ -620,7 +703,12 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
   "nome_completo": "Maria Lima",
   "matricula": "MAT002",
   "role_setor": "MEMBRO",
-  "ativo": true
+  "ativo": true,
+  "bloqueado_mes": true,
+  "bloqueio": {
+    "mes_referencia": "2026-06",
+    "motivo": "Excesso de trocas no período"
+  }
 }]
 ```
 
@@ -1001,6 +1089,31 @@ Toda mudança de status em uma solicitação é registrada automaticamente via t
 - `alterado_por` é populado via coluna `updated_by` da solicitação, que as Edge Functions preenchem com o `user.id` do token JWT.
 - Acesso direto bloqueado por RLS — leitura disponível apenas via `SERVICE_ROLE_KEY`.
 
+---
+# Bloqueios de Troca
+Tabela interna: `bloqueios_troca_mes`
+
+Controla usuários impedidos de participar de trocas (como requisitante ou cedente) em um setor específico durante um mês.
+
+## Estrutura
+
+| Campo | Tipo | Descrição |
+| --- | --- | --- |
+| `id` | bigint | identificador do registro |
+| `profile_id` | uuid | usuário bloqueado |
+| `setor_id` | int | setor onde o bloqueio se aplica |
+| `mes_referencia` | text | mês no formato `YYYY-MM` |
+| `motivo` | text | justificativa (opcional) |
+| `bloqueado_por` | uuid | `profile_id` de quem aplicou o bloqueio |
+| `criado_em` | timestamptz | momento do bloqueio |
+
+## Regras
+
+- Unique constraint em `(profile_id, setor_id, mes_referencia)` — um bloqueio por pessoa por setor por mês.
+- O bloqueio impede o usuário de aparecer como **requisitante ou cedente** em novas solicitações naquele setor e mês.
+- Bloqueios não afetam solicitações já existentes.
+- O mês de referência é derivado de `data_requisitante` no momento da criação da solicitação.
+- Gerenciado via actions `bloquear_usuario_mes` e `desbloquear_usuario_mes` em `/functions/v1/solicitacoes`.
 
 ---
 
@@ -1024,11 +1137,11 @@ Toda mudança de status em uma solicitação é registrada automaticamente via t
 | `SETOR_SEM_GESTOR` | 422 | setor não possui gestor ativo |
 | `SETOR_GESTOR_DUPLICADO` | 409 | já existe um gestor ativo neste setor |
 | `TURNOS_INCOMPATIVEIS` | 422 | turnos com cargas horárias diferentes |
-| `CONFLICT` | 409 | nome de setor duplicado |
+| `CONFLICT` | 409 | nome de setor duplicado / bloqueio já existente |
 | `LIMITE_MENSAL` | 422 | usuário atingiu o limite de solicitações do mês |
 | `SELF_DEACTIVATION` | 403 | admin tentou desativar a si mesmo |
 | `MATRICULA_DUPLICADA` | 409 | matrícula já está em uso por outro usuário |
-
+| `USUARIO_BLOQUEADO_MES` | 422 | requisitante ou cedente está bloqueado para trocas neste mês neste setor |
 # Status
 
 | Status | Significado |
