@@ -39,7 +39,8 @@ Body
 **Regras de negócio**
 
 - Apenas ADMIN pode chamar este endpoint.
-- O email de login é gerado automaticamente: `{matricula}@stp.interno`.
+- A matrícula é normalizada para UPPERCASE antes de salvar.
+- O email de login é gerado automaticamente: `{matricula.toLowerCase()}@stp.interno`.
 - `setor_id` e `role_setor` devem ser enviados juntos ou nenhum dos dois.
 - Se `role_setor = 'GESTOR'`: valida que não existe outro gestor ativo no setor → erro `SETOR_GESTOR_DUPLICADO`.
 - Se o vínculo com setor falhar, o usuário criado no Auth é removido (rollback).
@@ -62,20 +63,48 @@ Body
 
 # Login
 
-O login é feito diretamente pelo cliente Supabase — sem endpoint customizado.
-
-```jsx
-const { data, error } = await supabase.auth.signInWithPassword({
-  email: `${matricula}@stp.interno`,
-  password: senha
-})
-
-const jwt = data.session.access_token
+Endpoint: `/functions/v1/login`
+```
+POST /functions/v1/login
+Content-Type: application/json
 ```
 
-O JWT retornado deve ser enviado no header `Authorization: Bearer <jwt>` em todas as chamadas às Edge Functions.
 
----
+**Body**
+
+```json
+{
+  "matricula": "12345",
+  "password": "senha123"
+}
+```
+
+O login usa um endpoint customizado que resolve o email real do usuário internamente — não monte o email no cliente. Isso garante que mudanças de matrícula não quebrem o acesso.
+
+**Regras de negócio**
+
+- Matrícula é case-insensitive: `mat01`, `MAT01` e `Mat01` são equivalentes.
+- Após 10 tentativas com falha em 15 minutos, a conta é bloqueada por 15 minutos → erro `TOO_MANY_REQUESTS`.
+- Tentativas com matrícula inexistente também contam para o bloqueio (evita enumeração).
+- Usuário inativo retorna `USER_INACTIVE` mesmo com credenciais corretas.
+
+**Response 200**
+
+```json
+{
+  "access_token": "...",
+  "refresh_token": "...",
+  "expires_in": 3600,
+  "user": {
+    "id": "uuid",
+    "matricula": "12345",
+    "nome_completo": "Maria Lima da Silva",
+    "role": "FUNCIONARIO"
+  }
+}
+```
+
+O `access_token` deve ser enviado no header `Authorization: Bearer <token>` em todas as chamadas às Edge Functions.
 
 # Roles
 
@@ -123,3 +152,6 @@ Se o usuário foi criado sem setor, o ADMIN pode vinculá-lo depois via `/functi
 | `CONFLICT` | 409 | Matrícula já cadastrada |
 | `SETOR_GESTOR_DUPLICADO` | 409 | Já existe gestor ativo no setor |
 | `INTERNAL_ERROR` | 500 | Erro ao salvar perfil ou vínculo (com rollback) |
+| `INVALID_CREDENTIALS` | 401 | Matrícula ou senha inválidos |
+| `USER_INACTIVE` | 403 | Conta desativada |
+| `TOO_MANY_REQUESTS` | 429 | Limite de tentativas atingido |

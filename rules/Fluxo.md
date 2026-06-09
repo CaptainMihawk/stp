@@ -676,15 +676,19 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 **Quem pode usar:** ADMIN
 
 **Body**
-{ "action": "reativar_setor", "setor_id": 1 }
 
+```json
+{ "action": "reativar_setor", "setor_id": 1 }
+```
 **Regras de negócio**
 - Somente ADMIN.
 - Reativa apenas o setor — vínculos de membros devem ser reativados separadamente via `vincular_membro`.
 - Erro `INVALID_STATUS` se o setor já estiver ativo.
 
 **Response 200**
+```json
 { "setor_id": 1, "ativo": true }
+```
 
 ---
 # ADMIN
@@ -769,6 +773,7 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 - `nova_senha` obrigatória, mínimo 8 caracteres.
 - Senha definida diretamente via Auth Admin API — sem envio de email.
 - O usuário pode trocar a senha no próximo login.
+- Após o reset bem-sucedido, todas as sessões ativas do usuário são revogadas automaticamente.
 
 **Response 200**
 
@@ -853,6 +858,8 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 - Somente ADMIN.
 - Ao menos um campo (`nome_completo` ou `matricula`) deve ser informado.
 - Matrícula deve ser única — erro `MATRICULA_DUPLICADA` se já estiver em uso por outro usuário.
+- Matrícula é normalizada para UPPERCASE e deve ter entre 4 e 12 caracteres.
+- Ao alterar a matrícula, o email no sistema de autenticação é sincronizado automaticamente para `{nova_matricula.toLowerCase()}@stp.interno`.
 - Não afeta vínculos de setor, senha ou status `ativo`.
 - Alterar a matrícula reflete imediatamente em todos os joins de histórico e solicitações (comportamento por design).
 
