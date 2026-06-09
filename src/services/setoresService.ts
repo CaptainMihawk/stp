@@ -1,4 +1,5 @@
 import { callEdgeFunction } from './adminService'
+import type { BloqueioTrocaMes } from '../lib/types'
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -18,6 +19,8 @@ export interface MembroSetor {
   matricula: string
   role_setor: 'MEMBRO' | 'GESTOR'
   ativo: boolean
+  bloqueado_mes?: boolean
+  bloqueio?: BloqueioTrocaMes | null
 }
 
 // ---------------------------------------------------------------------------

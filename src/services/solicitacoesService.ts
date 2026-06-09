@@ -1,4 +1,4 @@
-import type { Profile, StatusSolicitacao, Turno, VinculoSetor } from '../lib/types'
+import type { Profile, StatusSolicitacao, Turno, VinculoSetor, BloqueioTrocaMes } from '../lib/types'
 import { callEdgeFunction } from './adminService'
 
 // ---------------------------------------------------------------------------
@@ -8,6 +8,7 @@ import { callEdgeFunction } from './adminService'
 export interface DadosUsuario {
   profile: Profile
   vinculos: (VinculoSetor & { setor: { id: number; nome: string } })[]
+  bloqueios: BloqueioTrocaMes[]
 }
 
 export async function listarMeusDados(): Promise<DadosUsuario> {
@@ -23,6 +24,7 @@ export interface Participante {
   profile_id?: string
   nome_completo: string
   matricula: string
+  bloqueado_mes?: boolean
 }
 
 /**
@@ -263,4 +265,49 @@ export async function listarHistoricoSolicitacao(
     per_page,
     ...(mes ? { mes } : {}),
   }, { readOnly: true })
+}
+
+// ---------------------------------------------------------------------------
+// Bloqueios de troca mensal
+// ---------------------------------------------------------------------------
+
+export interface BloquearUsuarioMesPayload {
+  profile_id: string
+  setor_id: number
+  mes_referencia: string // YYYY-MM
+  motivo?: string
+}
+
+export async function bloquearUsuarioMes(
+  data: BloquearUsuarioMesPayload,
+): Promise<BloqueioTrocaMes> {
+  return callEdgeFunction('solicitacoes', {
+    action: 'bloquear_usuario_mes',
+    ...data,
+  })
+}
+
+export async function desbloquearUsuarioMes(
+  profile_id: string,
+  setor_id: number,
+  mes_referencia: string,
+): Promise<void> {
+  await callEdgeFunction('solicitacoes', {
+    action: 'desbloquear_usuario_mes',
+    profile_id,
+    setor_id,
+    mes_referencia,
+  })
+}
+
+export async function listarBloqueiosMes(
+  setor_id: number,
+  mes_referencia: string,
+): Promise<BloqueioTrocaMes[]> {
+  const result = await callEdgeFunction<{ data: BloqueioTrocaMes[] }>('solicitacoes', {
+    action: 'listar_bloqueios_mes',
+    setor_id,
+    mes_referencia,
+  }, { readOnly: true })
+  return result.data || []
 }

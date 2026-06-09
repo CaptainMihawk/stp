@@ -10,9 +10,10 @@ import { SearchableSelect } from '../components/SearchableSelect'
 import { TurnoSelect } from '../components/TurnoSelect'
 import { useToast } from '../components/Toast'
 import { handleError } from '../lib/errors'
+import { verificarBloqueioCriarSolicitacao } from '../lib/solicitacaoRules'
 import * as solicitacoesService from '../services/solicitacoesService'
 import * as setoresService from '../services/setoresService'
-import { FileText, ArrowLeftRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { FileText, ArrowLeftRight, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
 
 type PlantaoInput = {
   data: string
@@ -20,7 +21,7 @@ type PlantaoInput = {
 }
 
 export function FuncionarioPage() {
-  const { profile } = useAuth()
+  const { profile, bloqueios } = useAuth()
   const toast = useToast()
   
   // Tabs config
@@ -231,6 +232,17 @@ export function FuncionarioPage() {
       return
     }
 
+    // Verificar bloqueios para o mês da solicitação (usando o mês do plantão do requisitante)
+    const mesReferencia = meuPlantao.data.substring(0, 7) // YYYY-MM
+    const cedenteSelecionado = membrosSetor.find(m => m.profile_id === selectedCedenteId)
+    const cedenteBloqueadoMes = cedenteSelecionado?.bloqueado_mes ?? false
+    
+    const erroBloqueio = verificarBloqueioCriarSolicitacao(bloqueios, cedenteBloqueadoMes, mesReferencia)
+    if (erroBloqueio) {
+      toast.error(erroBloqueio)
+      return
+    }
+
     setIsSubmiting(true)
     try {
       await solicitacoesService.criarSolicitacao({
@@ -360,6 +372,20 @@ export function FuncionarioPage() {
                 noResultsMessage="Nenhum colega encontrado para esta busca"
               />
             </div>
+
+            {/* Warning if selected cedente is blocked for current month */}
+            {selectedCedenteId && (() => {
+              const cedente = membrosSetor.find(m => m.profile_id === selectedCedenteId)
+              if (cedente?.bloqueado_mes) {
+                return (
+                  <div className="blocked-warning" key={cedente.profile_id}>
+                    <AlertCircle size={16} />
+                    <span>Este colega está bloqueado para trocas neste mês.</span>
+                  </div>
+                )
+              }
+              return null
+            })()}
 
             {/* Requisitante Shift block */}
             <div className="plantao-block full-width">

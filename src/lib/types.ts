@@ -43,6 +43,7 @@ export interface VinculoSetor {
   setor_id: number
   role_setor: RoleSetor
   ativo: boolean
+  setor?: Setor
 }
 
 export interface Solicitacao {
@@ -61,4 +62,16 @@ export interface Solicitacao {
   replica_gestor: string | null
   criado_em: string
   respondido_em: string | null
+}
+
+/** Bloqueio de troca mensal — impede usuário de participar como requisitante ou cedente. */
+export interface BloqueioTrocaMes {
+  id: number
+  profile_id: string
+  setor_id: number
+  mes_referencia: string // formato YYYY-MM
+  motivo: string | null
+  bloqueado_por: string
+  criado_em: string
+  setor_nome?: string // opcional, para exibição
 }
