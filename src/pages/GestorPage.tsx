@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ClipboardList, History, Clock } from 'lucide-react'
+import { ClipboardList, History, Clock, Calendar } from 'lucide-react'
 import { Layout } from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -10,6 +10,7 @@ import { GestorRequestCard } from '../components/GestorRequestCard'
 import { StatusPill } from '../components/StatusPill'
 import { useToast } from '../components/Toast'
 import { handleError } from '../lib/errors'
+import type { StatusSolicitacao } from '../lib/types'
 import * as solicitacoesService from '../services/solicitacoesService'
 
 export function GestorPage() {
@@ -17,16 +18,34 @@ export function GestorPage() {
   const toast = useToast()
 
   const [activeTab, setActiveTab] = useState<string>('pendentes')
+  const [mesFiltro, setMesFiltro] = useState<string>('') // formato YYYY-MM
+  const [statusFiltro, setStatusFiltro] = useState<StatusSolicitacao | ''>('')
 
   const [solicitacoes, setSolicitacoes] = useState<solicitacoesService.SolicitacaoListItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null)
 
+  // Gera opções de meses (últimos 12 meses + mês atual)
+  const mesOptions = (() => {
+    const options = [{ value: '', label: 'Todos os meses' }]
+    const now = new Date()
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+      options.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })
+    }
+    return options
+  })()
+
   async function loadData() {
     if (!profile?.id) return
     setIsLoading(true)
     try {
-      const response = await solicitacoesService.listarSolicitacoesComoGestor()
+      const response = await solicitacoesService.listarSolicitacoesComoGestor({
+        status: statusFiltro || undefined,
+        mes: mesFiltro || undefined,
+      })
       // Ordena da mais nova para a mais antiga
       response.data.sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
       setSolicitacoes(response.data)
@@ -41,7 +60,7 @@ export function GestorPage() {
     if (profile?.id) {
       void loadData()
     }
-  }, [profile?.id])
+  }, [profile?.id, mesFiltro, statusFiltro])
 
   useEffect(() => {
     if (!profile?.id) return
@@ -270,6 +289,49 @@ export function GestorPage() {
           </p>
 
           <Tabs options={tabOptions} activeTab={activeTab} onChange={setActiveTab} />
+
+          {/* Filtros */}
+          <div className="gestor-filters">
+            <div className="filter-group">
+              <label htmlFor="mes-filtro">
+                <Calendar size={16} />
+                Mês
+              </label>
+              <select
+                id="mes-filtro"
+                value={mesFiltro}
+                onChange={(e) => setMesFiltro(e.target.value)}
+                className="filter-select"
+              >
+                {mesOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="filter-group">
+              <label htmlFor="status-filtro">
+                Status
+              </label>
+              <select
+                id="status-filtro"
+                value={statusFiltro}
+                onChange={(e) => setStatusFiltro(e.target.value as StatusSolicitacao | '')}
+                className="filter-select"
+              >
+                <option value="">Todos os status</option>
+                <option value="aguardando_cedente">Aguardando Cedente</option>
+                <option value="pendente">Pendente</option>
+                <option value="aprovado">Aprovado</option>
+                <option value="recusado_cedente">Recusado pelo Cedente</option>
+                <option value="recusado_gestor">Recusado pelo Gestor</option>
+                <option value="cancelado">Cancelado</option>
+                <option value="pedido_revogacao">Pedido de Revogação</option>
+                <option value="revogado">Revogado</option>
+              </select>
+            </div>
+          </div>
 
           <div className="gestor-tab-content">
             {tabContent}

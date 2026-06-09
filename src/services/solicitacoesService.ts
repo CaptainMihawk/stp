@@ -203,14 +203,23 @@ export async function listarSolicitacoes(
  * Todas as solicitações sob responsabilidade do gestor (todos os status).
  * Usa a Edge Function /functions/v1/solicitacoes com action listar_solicitacoes_gestor.
  */
+export interface ListarSolicitacoesGestorParams {
+  page?: number
+  per_page?: number
+  status?: StatusSolicitacao
+  mes?: string // formato YYYY-MM
+}
+
 export async function listarSolicitacoesComoGestor(
-  page = 1,
-  per_page = 20,
+  params: ListarSolicitacoesGestorParams = {},
 ): Promise<SolicitacaoListResponse> {
+  const { page = 1, per_page = 20, status, mes } = params
   return callEdgeFunction('solicitacoes', {
     action: 'listar_solicitacoes_gestor',
     page,
     per_page,
+    ...(status ? { status } : {}),
+    ...(mes ? { mes } : {}),
   }, { readOnly: true })
 }
 
@@ -236,15 +245,22 @@ export interface HistoricoSolicitacaoResponse {
   }
 }
 
+export interface ListarHistoricoSolicitacaoParams {
+  solicitacao_id: number
+  page?: number
+  per_page?: number
+  mes?: string // formato YYYY-MM
+}
+
 export async function listarHistoricoSolicitacao(
-  solicitacao_id: number,
-  page = 1,
-  per_page = 50,
+  params: ListarHistoricoSolicitacaoParams,
 ): Promise<HistoricoSolicitacaoResponse> {
+  const { solicitacao_id, page = 1, per_page = 50, mes } = params
   return callEdgeFunction('solicitacoes', {
     action: 'listar_historico_solicitacao',
     solicitacao_id,
     page,
     per_page,
+    ...(mes ? { mes } : {}),
   }, { readOnly: true })
 }
