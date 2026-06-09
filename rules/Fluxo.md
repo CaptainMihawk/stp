@@ -383,6 +383,8 @@ ou
 ```json
 {
   "action": "listar_solicitacoes_gestor",
+  "status": "aprovado",
+  "mes": "2026-06",
   "page": 1,
   "per_page": 20
 }
@@ -391,10 +393,11 @@ ou
 **Regras de negócio**
 
 - Retorna todas as solicitações onde o usuário logado é o `gestor_responsavel_id`.
-- Sem filtro de status — retorna todos os estados (ativo, encerrado, revogado).
 - Ordenado por `criado_em` decrescente.
-- `page`e `per_page` são opcionais (padrão: page = 1, per_page = 20, máximo per_page = 100).
+- `page` e `per_page` são opcionais (padrão: page = 1, per_page = 20, máximo per_page = 100).
 - Inclui `aprovacao`, `replica_gestor` e `respondido_em`.
+- `status` é opcional — filtra por status específico. Valores aceitos: `aguardando_cedente`, `pendente`, `aprovado`, `recusado_cedente`, `recusado_gestor`, `cancelado`, `pedido_revogacao`, `revogado`.
+- `mes` é opcional — formato `YYYY-MM` (ex: `"2026-06"`), filtra por `criado_em`. Os dois filtros são independentes e combináveis.
 
 **Response 200**
 
@@ -437,6 +440,7 @@ ou
 {
   "action": "listar_historico_solicitacao",
   "solicitacao_id": 42,
+  "mes": "2026-06",
   "page": 1,
   "per_page": 50
 }
@@ -447,6 +451,7 @@ ou
 - Apenas o gestor responsável da solicitação pode consultar.
 - `page` e `per_page` são opcionais (padrão: `page = 1`, `per_page = 50`, máximo `per_page = 100`).
 - Ordenado por `alterado_em` decrescente.
+- `mes` é opcional — formato `YYYY-MM` (ex: `"2026-06"`), filtra os registros do histórico por `alterado_em`.
 
 **Response 200**
 
