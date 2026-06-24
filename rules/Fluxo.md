@@ -183,7 +183,7 @@ ou
 
 **Regras de negócio**
 
-- Requisitante pode solicitar a partir de `aguardando_cedente`, `pendente` ou `aprovado`.
+- Requisitante pode solicitar a partir de `pendente` ou `aprovado`.
 - Cedente pode solicitar a partir de `pendente` ou `aprovado`.
 - `justificativa` é obrigatória.
 - O status anterior é salvo internamente para permitir reversão pelo gestor.
@@ -409,7 +409,7 @@ ou
 - `status` é opcional — filtra por status específico. Valores aceitos: `aguardando_cedente`, `pendente`, `aprovado`, `recusado_cedente`, `recusado_gestor`, `cancelado`, `pedido_revogacao`, `revogado`.
 - `mes` é opcional — formato `YYYY-MM` (ex: `"2026-06"`), filtra por `criado_em`. Os dois filtros são independentes e combináveis.
 - Cada item retorna `bloqueado_mes` no objeto `requisitante` e `cedente`, indicando se o usuário está bloqueado neste setor no mês corrente.
-
+- Restrito a usuários com role_setor = 'GESTOR' ativo em algum setor. Retorna 403 FORBIDDEN caso contrário.
 **Response 200**
 
 ```json
