@@ -436,6 +436,10 @@ ou
     "per_page": 20,
     "total": 10,
     "total_pages": 1
+  },
+  "counts": {
+    "pendente": 3,
+    "pedido_revogacao": 2
   }
 }
 ```
