@@ -867,7 +867,7 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 **Regras de negócio**
 
 - Somente ADMIN.
-- `nova_senha` obrigatória, mínimo 8 caracteres.
+- `nova_senha` obrigatória, mínimo 6 caracteres.
 - Senha definida diretamente via Auth Admin API — sem envio de email.
 - O usuário pode trocar a senha no próximo login.
 - Após o reset bem-sucedido, todas as sessões ativas do usuário são revogadas automaticamente.
