@@ -3,6 +3,29 @@ import { useAuth } from './contexts/AuthContext'
 import { LoginPage } from './pages/LoginPage'
 import { AdminPage } from './pages/AdminPage'
 import { StaffPortal } from './pages/StaffPortal'
+import AdminLayout from './components/admin/AdminLayout'
+import AdminDashboard from './components/admin/AdminDashboard'
+import AdminUsers from './components/admin/AdminUsers'
+import AdminSectors from './components/admin/AdminSectors'
+import AdminFunctions from './components/admin/AdminFunctions'
+import AdminSettings from './components/admin/AdminSettings'
+import AdminHistory from './components/admin/AdminHistory'
+
+function AdminRoutes() {
+  return (
+    <Routes>
+      <Route element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="sectors" element={<AdminSectors />} />
+        <Route path="functions" element={<AdminFunctions />} />
+        <Route path="settings" element={<AdminSettings />} />
+        <Route path="history" element={<AdminHistory />} />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
+      </Route>
+    </Routes>
+  )
+}
 
 function ProtectedArea() {
   const { session, profile, loading } = useAuth()
@@ -18,8 +41,7 @@ function ProtectedArea() {
     )
   }
 
-  if (profile.role === 'ADMIN') return <AdminPage />
-  // Gestor operacional = role_setor GESTOR (AUTH.md), não profiles.role global
+  if (profile.role === 'ADMIN') return <AdminRoutes />
   return <StaffPortal />
 }
 
