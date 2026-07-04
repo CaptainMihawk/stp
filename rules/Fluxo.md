@@ -1192,6 +1192,26 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
   "vinculos_ativos": 3
 }
 ```
+## reativar_funcao
+
+**Quem pode usar:** ADMIN
+
+**Body:**
+```json
+{ "action": "reativar_funcao", "codigo": "ENFA" }
+```
+
+**Regras de negócio**
+- Somente ADMIN.
+- `codigo` normalizado para UPPERCASE antes da busca.
+- Se a função não existir → erro `NOT_FOUND`.
+- Se a função já estiver ativa → erro `INVALID_STATUS`.
+- Define `ativo = true`.
+
+**Response `200`:**
+```json
+{ "codigo": "ENFA", "descricao": "Enfermagem A", "ativo": true }
+```
 
 ---
 
