@@ -3024,8 +3024,8 @@ tbody tr:hover {
 .admin-main {
   flex: 1;
   margin-left: 220px;
-  padding: 24px;
-  max-width: 960px;
+  padding: 24px 32px;
+  min-width: 0;
 }
 
 .admin-sidebar-toggle {
@@ -3164,7 +3164,7 @@ tbody tr:hover {
 /* ===== STAT CARDS ===== */
 .stat-cards-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -3364,7 +3364,7 @@ tbody tr:hover {
 /* ===== ADMIN SECTOR CARDS ===== */
 .sector-cards-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
 }
 
@@ -3510,7 +3510,7 @@ tbody tr:hover {
 /* ===== ADMIN FORMS ===== */
 .admin-form-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
 }
 

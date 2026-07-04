@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Building2 } from 'lucide-react';
 import { listarSetores, desativarSetor, reativarSetor, editarSetor, desativarMembro, listarMembrosSetor } from '../../services/setoresService';
-import type { MembroSetor } from '../../services/setoresService';
+import type { MembroSetor, SetorListItem } from '../../services/setoresService';
 import { useToast } from '../Toast';
-import ConfirmDialog from '../ConfirmDialog';
+import { ConfirmDialog } from '../ConfirmDialog';
 import SectorCreateForm from './SectorCreateForm';
 import SectorLinkForm from './SectorLinkForm';
 import SectorCard from './SectorCard';
 import SectorMembers from './SectorMembers';
-
-type SetorListItem = Awaited<ReturnType<typeof listarSetores>>[number];
 
 export default function AdminSectors() {
   const toast = useToast();
@@ -99,7 +97,7 @@ export default function AdminSectors() {
         </h1>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16, marginBottom: 24 }}>
         <div style={{ padding: 16, background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
           <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Criar Setor</h3>
           <SectorCreateForm onCreated={loadSetores} />
@@ -135,15 +133,27 @@ export default function AdminSectors() {
       )}
 
       {selectedSetorId && (
-        <div style={{ marginTop: 24, padding: 16, background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
-          <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>
-            Membros — {setores.find((s) => s.id === selectedSetorId)?.nome}
-          </h3>
-          {loadingMembers ? (
-            <p style={{ color: 'var(--text-muted)' }}>Carregando...</p>
-          ) : (
-            <SectorMembers members={membros} onDeactivate={(pid) => setDeactivateMemberTarget(pid)} />
-          )}
+        <div className="modal-overlay" onClick={() => setSelectedSetorId(null)}>
+          <div className="modal-content" style={{ maxWidth: 720 }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">
+              Membros — {setores.find((s) => s.id === selectedSetorId)?.nome}
+            </h3>
+            {loadingMembers ? (
+              <div>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="skeleton-row">
+                    <div className="skeleton skeleton-cell" style={{ flex: 1 }} />
+                    <div className="skeleton skeleton-cell" style={{ width: 80 }} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <SectorMembers members={membros} onDeactivate={(pid) => setDeactivateMemberTarget(pid)} />
+            )}
+            <div className="modal-actions">
+              <button className="admin-btn admin-btn-ghost" onClick={() => setSelectedSetorId(null)}>Fechar</button>
+            </div>
+          </div>
         </div>
       )}
 
