@@ -400,6 +400,11 @@ export function GestorPage() {
                   </strong>
                 </div>
               </div>
+              {item.funcao && (
+                <p className="request-obs">
+                  <strong>Função:</strong> {item.funcao}
+                </p>
+              )}
               {item.justificativa_revogacao && (
                 <p className="request-obs gestor-obs-warning">
                   <strong>Revogação:</strong> {item.justificativa_revogacao}

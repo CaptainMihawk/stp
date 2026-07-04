@@ -87,6 +87,12 @@ export const RequestCard: React.FC<RequestCardProps> = ({
       <div className="request-head">
         <div>
           <h4>Troca #{item.id}</h4>
+          {item.setor && (
+            <span className="request-setor">🏥 {item.setor.nome}</span>
+          )}
+          {item.funcao && (
+            <span className="request-funcao">🏷️ {item.funcao}</span>
+          )}
           <span className="request-date">{formatDateTime(item.criado_em)}</span>
         </div>
         <StatusPill status={item.status} />

@@ -33,7 +33,7 @@ rules/            — Fluxo.md (API), AUTH.md (auth), memory.md (este)
 ## Auth & Roles
 
 - Login via matrícula: `{matricula}@stp.interno` (config `VITE_AUTH_DOMAIN`)
-- **Role global** (`profiles.role`): `ADMIN | GESTOR | FUNCIONARIO` — controle de acesso a páginas
+- **Role global** (`profiles.role`): `ADMIN | FUNCIONARIO` — controle de acesso a páginas
 - **Role de setor** (`profiles_setores.role_setor`): `GESTOR | MEMBRO` — papel operacional DENTRO do setor
 - São **independentes**: FUNCIONARIO pode ser GESTOR de um setor (define `isGestorSetor`)
 - ADMIN → `AdminPage`; demais → `StaffPortal` (que decide entre `FuncionarioPage` ou `GestorPage` baseado em `isGestorSetor`)

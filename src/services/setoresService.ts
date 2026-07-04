@@ -18,6 +18,7 @@ export interface MembroSetor {
   nome_completo: string
   matricula: string
   role_setor: 'MEMBRO' | 'GESTOR'
+  funcao?: string
   ativo: boolean
   bloqueado_mes?: boolean
   bloqueio?: BloqueioTrocaMes | null
@@ -75,7 +76,8 @@ export async function vincularMembro(data: {
   profile_id: string
   setor_id: number
   role_setor: 'MEMBRO' | 'GESTOR'
-}): Promise<{ profile_id: string; setor_id: number; role_setor: string; ativo: boolean }> {
+  funcao?: string
+}): Promise<{ profile_id: string; setor_id: number; role_setor: string; funcao?: string; ativo: boolean }> {
   return callEdgeFunction('setores', { action: 'vincular_membro', ...data })
 }
 

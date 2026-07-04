@@ -1,8 +1,14 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { LoginPage } from './pages/LoginPage'
-import { AdminPage } from './pages/AdminPage'
 import { StaffPortal } from './pages/StaffPortal'
+import AdminLayout from './components/admin/AdminLayout'
+import AdminDashboard from './components/admin/AdminDashboard'
+import AdminUsers from './components/admin/AdminUsers'
+import AdminSectors from './components/admin/AdminSectors'
+import AdminFunctions from './components/admin/AdminFunctions'
+import AdminSettings from './components/admin/AdminSettings'
+import AdminHistory from './components/admin/AdminHistory'
 
 function ProtectedArea() {
   const { session, profile, loading } = useAuth()
@@ -18,8 +24,6 @@ function ProtectedArea() {
     )
   }
 
-  if (profile.role === 'ADMIN') return <AdminPage />
-  // Gestor operacional = role_setor GESTOR (AUTH.md), não profiles.role global
   return <StaffPortal />
 }
 
@@ -30,12 +34,36 @@ export default function App() {
 
   const isAuthenticated = Boolean(session && profile)
 
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    )
+  }
+
+  if (profile?.role === 'ADMIN') {
+    return (
+      <Routes>
+        <Route path="/login" element={<Navigate to="/admin" replace />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="sectors" element={<AdminSectors />} />
+          <Route path="functions" element={<AdminFunctions />} />
+          <Route path="settings" element={<AdminSettings />} />
+          <Route path="history" element={<AdminHistory />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/admin" replace />} />
+      </Routes>
+    )
+  }
+
   return (
     <Routes>
-      <Route
-        path="/login"
-        element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
-      />
+      <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/" element={<ProtectedArea />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
