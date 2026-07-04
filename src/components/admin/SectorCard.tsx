@@ -1,6 +1,5 @@
 import { Pencil, Trash2, Users } from 'lucide-react';
-import { listarSetores } from '../../services/setoresService';
-type SetorListItem = Awaited<ReturnType<typeof listarSetores>>[number];
+import type { SetorListItem } from '../../services/setoresService';
 
 interface SectorCardProps {
   setor: SetorListItem;

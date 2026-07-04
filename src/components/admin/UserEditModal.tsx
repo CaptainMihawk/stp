@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { editarUsuario } from '../../services/adminService';
 import { useToast } from '../Toast';
-import type { AdminUsuario } from '../../lib/types';
+import type { AdminUsuario } from '../../services/adminService';
 
 interface UserEditModalProps {
   user: AdminUsuario;

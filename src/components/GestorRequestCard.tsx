@@ -88,6 +88,9 @@ export function GestorRequestCard({
               {item.setor && (
                 <span className="gestor-card-setor">🏥 {item.setor.nome}</span>
               )}
+              {item.funcao && (
+                <span className="gestor-card-funcao">🏷️ {item.funcao}</span>
+              )}
               <span className="request-date gestor-card-date">
                 {showFinalizedDate ? 'Finalizada em: ' : 'Criada em: '}
                 {item.respondido_em && showFinalizedDate

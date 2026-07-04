@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { listarSetores } from '../../services/setoresService';
 import { listarFuncoes, createUser } from '../../services/adminService';
 import { useToast } from '../Toast';
-import type { SetorListItem, TipoFuncao } from '../../lib/types';
+import type { SetorListItem } from '../../services/setoresService';
+import type { TipoFuncao } from '../../services/adminService';
 
 interface UserFormProps {
   onCreated: () => void;

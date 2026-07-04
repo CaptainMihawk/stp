@@ -38,6 +38,7 @@ export interface SetorInfo {
 export interface SolicitacaoListItem {
   id: number
   status: StatusSolicitacao
+  funcao?: string
   requisitante: Participante
   cedente: Participante
   gestor_responsavel?: Participante

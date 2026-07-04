@@ -77,18 +77,20 @@ export interface CreateUserPayload {
   matricula: string
   nome_completo: string
   password: string
-  role: 'ADMIN' | 'FUNCIONARIO' | 'GESTOR'
+  role: 'ADMIN' | 'FUNCIONARIO'
   /** Opcional: vincula ao setor imediatamente. Deve vir com role_setor. */
   setor_id?: number
   /** Opcional: obrigatório se setor_id for enviado. */
   role_setor?: 'MEMBRO' | 'GESTOR'
+  /** Opcional: código da função profissional. Requer setor_id. */
+  funcao?: string
 }
 
 export interface CreateUserResponse {
   success: boolean
   user_id: string
   email: string
-  setor: { setor_id: number; role_setor: string } | null
+  setor: { setor_id: number; role_setor: string; funcao?: string } | null
 }
 
 export async function createUser(data: CreateUserPayload): Promise<CreateUserResponse> {
@@ -103,7 +105,7 @@ export interface AdminUsuario {
   id: string
   nome_completo: string
   matricula: string
-  role: 'ADMIN' | 'FUNCIONARIO' | 'GESTOR'
+  role: 'ADMIN' | 'FUNCIONARIO'
   ativo: boolean
   email: string
   ultimo_login: string | null
@@ -168,6 +170,8 @@ export interface EditarUsuarioPayload {
   profile_id: string
   nome_completo?: string
   matricula?: string
+  setor_id?: number
+  funcao?: string
 }
 
 export interface EditarUsuarioResponse {
@@ -241,4 +245,42 @@ export async function listarHistoricoAdmin(
     page,
     per_page,
   }, { readOnly: true })
+}
+
+// ---------------------------------------------------------------------------
+// Funções Profissionais (tipos_funcao)
+// ---------------------------------------------------------------------------
+
+export interface TipoFuncao {
+  codigo: string
+  descricao: string
+  ativo: boolean
+  criado_em: string
+}
+
+export interface CriarFuncaoPayload {
+  codigo: string
+  descricao: string
+}
+
+export async function criarFuncao(
+  data: CriarFuncaoPayload,
+): Promise<TipoFuncao> {
+  return callEdgeFunction('admin', {
+    action: 'criar_funcao',
+    ...data,
+  })
+}
+
+export async function listarFuncoes(): Promise<TipoFuncao[]> {
+  return callEdgeFunction('admin', { action: 'listar_funcoes' }, { readOnly: true })
+}
+
+export async function desativarFuncao(
+  codigo: string,
+): Promise<{ codigo: string; ativo: boolean; aviso?: string; vinculos_ativos?: number }> {
+  return callEdgeFunction('admin', {
+    action: 'desativar_funcao',
+    codigo,
+  })
 }

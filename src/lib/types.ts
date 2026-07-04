@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'FUNCIONARIO' | 'GESTOR'
+export type Role = 'ADMIN' | 'FUNCIONARIO'
 
 export type RoleSetor = 'MEMBRO' | 'GESTOR'
 
@@ -42,8 +42,16 @@ export interface ProfileSetor {
 export interface VinculoSetor {
   setor_id: number
   role_setor: RoleSetor
+  funcao?: string
   ativo: boolean
   setor?: Setor
+}
+
+export interface TipoFuncao {
+  codigo: string
+  descricao: string
+  ativo: boolean
+  criado_em: string
 }
 
 export interface Solicitacao {

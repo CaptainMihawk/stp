@@ -34,7 +34,7 @@ Content-Type: application/json
 | `matricula` | ✅ | 4–12 caracteres. Usada para gerar o email de login |
 | `nome_completo` | ✅ | 10–64 caracteres |
 | `password` | ✅ | Senha inicial definida pelo ADMIN |
-| `role` | ✅ | Role global: `ADMIN`, `GESTOR` ou `FUNCIONARIO` |
+| `role` | ✅ | Role global: `ADMIN` ou `FUNCIONARIO` |
 | `setor_id` | ⚪ opcional | ID do setor para vínculo imediato |
 | `role_setor` | ⚪ opcional | `MEMBRO` ou `GESTOR` — obrigatório se `setor_id` for enviado |
 | `funcao` | ⚪ opcional | Código da função profissional. Só válido junto com `setor_id`. Deve existir em `tipos_funcao` ativo. |
