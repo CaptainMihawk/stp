@@ -1,3 +1,5 @@
+# Fluxo do Sistema de Troca de Plantão
+
 A troca de plantão segue esta ordem:
 
 `criar_solicitacao` → `aguardando_cedente` → `cedente_responder` → `pendente` → `gestor_responder` → `aprovado` ou `recusado_gestor`
@@ -6,7 +8,6 @@ Se o cedente recusar, o fluxo termina em `recusado_cedente`.
 
 Cancelamento e revogação podem ocorrer em qualquer ponto do fluxo ativo.
 
----
 # Solicitações
 Endpoint: /functions/v1/solicitacoes
 
@@ -68,6 +69,8 @@ Todas as operações usam o mesmo endpoint. O comportamento é definido pelo cam
 - A solicitação nasce com status `aguardando_cedente`.
 - O limite mensal é compartilhado: conta todas as solicitações do mês onde o usuário aparece como `requisitante_id` **ou** `cedente_id`, com status diferente de `cancelado`, `recusado_cedente` ou `recusado_gestor`. Se o total atingir `limite_solicitacoes_mensal` (configurável via `/admin`, padrão 5), retorna erro `LIMITE_MENSAL`.
 - O mês de referência do bloqueio é derivado de `data_requisitante`. Se o **requisitante** estiver bloqueado neste setor e mês, retorna erro `USUARIO_BLOQUEADO_MES`. Se o **cedente** estiver bloqueado, também retorna `USUARIO_BLOQUEADO_MES` — com mensagem distinta indicando que o problema é o cedente.
+- Se o requisitante possuir `funcao` definida no vínculo do setor, o backend busca a `funcao` do cedente no mesmo setor. Se ambas forem não-nulas e divergirem, retorna erro `FUNCAO_INCOMPATIVEL`. Vínculos sem função cadastrada são ignorados na validação.
+- `funcao` é derivada automaticamente do vínculo do requisitante e salva na solicitação — sem campo no body.
 
 **Response 201**
 
@@ -269,8 +272,6 @@ ou
 }
 ```
 
-
-
 **Filtros**
 
 | Filtro | Retorno |
@@ -279,7 +280,8 @@ ou
 | `cedente` | solicitações onde o usuário é o cedente |
 | `pendentes_gestor` | solicitações do gestor com status `pendente` |
 | `pedidos_revogacao` | solicitações do gestor com status `pedido_revogacao` |
-|`page` e `per_page` | são opcionais (padrão: page = 1, per_page = 20, máximo per_page = 100).
+
+`page` e `per_page` são opcionais (padrão: page = 1, per_page = 20, máximo per_page = 100).
 
 **Response 200**
 
@@ -288,6 +290,7 @@ ou
   "data": [{
     "id": 42,
     "status": "pendente",
+    "funcao": "ENFA",
     "requisitante": { "nome_completo": "...", "matricula": "..." },
     "cedente": { "nome_completo": "...", "matricula": "..." },
     "setor": { "id": 1, "nome": "UTI" },
@@ -369,6 +372,7 @@ ou
   "vinculos": [{
     "setor_id": 1,
     "role_setor": "MEMBRO",
+    "funcao": "ENFA",
     "ativo": true,
     "setor": { "id": 1, "nome": "UTI" }
   }],
@@ -382,7 +386,6 @@ ou
   ]
 }
 ```
-
 
 ## listar_solicitacoes_gestor
 
@@ -410,6 +413,7 @@ ou
 - `mes` é opcional — formato `YYYY-MM` (ex: `"2026-06"`), filtra por `criado_em`. Os dois filtros são independentes e combináveis.
 - Cada item retorna `bloqueado_mes` no objeto `requisitante` e `cedente`, indicando se o usuário está bloqueado neste setor no mês corrente.
 - Restrito a usuários com role_setor = 'GESTOR' ativo em algum setor. Retorna 403 FORBIDDEN caso contrário.
+
 **Response 200**
 
 ```json
@@ -417,6 +421,7 @@ ou
   "data": [{
     "id": 42,
     "status": "aprovado",
+    "funcao": "ENFA",
     "requisitante": { "id": "uuid", "nome_completo": "...", "matricula": "...", "bloqueado_mes": false },
     "cedente": { "id": "uuid", "nome_completo": "...", "matricula": "...", "bloqueado_mes": true },
     "setor": { "id": 1, "nome": "UTI" },
@@ -443,7 +448,6 @@ ou
   }
 }
 ```
-
 
 ## listar_historico_solicitacao
 
@@ -495,7 +499,6 @@ ou
 **Body**
 
 ```json
-
 {
   "action": "bloquear_usuario_mes",
   "profile_id": "uuid",
@@ -503,7 +506,6 @@ ou
   "mes_referencia": "2026-06",
   "motivo": "texto opcional"
 }
-
 ```
 
 **Regras de negócio**
@@ -519,14 +521,13 @@ ou
 **Response 200**
 
 ```json
-{ 
-  "success": true, 
-  "profile_id": "uuid", 
-  "setor_id": 1, 
-  "mes_referencia": "2026-06" 
+{
+  "success": true,
+  "profile_id": "uuid",
+  "setor_id": 1,
+  "mes_referencia": "2026-06"
 }
 ```
-​
 
 ## desbloquear_usuario_mes
 
@@ -552,15 +553,16 @@ ou
 **Response 200**
 
 ```json
-{ 
-  "success": true, 
-  "profile_id": "uuid", 
-  "setor_id": 1, 
-  "mes_referencia": "2026-06" 
+{
+  "success": true,
+  "profile_id": "uuid",
+  "setor_id": 1,
+  "mes_referencia": "2026-06"
 }
 ```
 
 ---
+
 # Setores
 Endpoint: /functions/v1/setores
 
@@ -572,7 +574,7 @@ Content-Type: application/json
 
 Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 
-### criar_setor
+## criar_setor
 
 **Quem pode usar:** ADMIN
 
@@ -597,7 +599,82 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 { "id": 1, "nome": "UTI", "ativo": true }
 ```
 
-### vincular_membro
+## editar_setor
+
+**Quem pode usar:** ADMIN
+
+**Body**
+
+```json
+{
+  "action": "editar_setor",
+  "setor_id": 1,
+  "nome": "Novo Nome"
+}
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Nome deve ser único — erro `CONFLICT` se já estiver em uso por outro setor.
+- Não afeta membros, vínculos ou status `ativo`.
+
+**Response 200**
+
+```json
+{ "id": 1, "nome": "Novo Nome", "ativo": true }
+```
+
+## desativar_setor
+
+**Quem pode usar:** ADMIN
+
+**Body**
+
+```json
+{
+  "action": "desativar_setor",
+  "setor_id": 1
+}
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Define `setores.ativo = false` e desativa todos os vínculos `profiles_setores` do setor automaticamente.
+- Bloqueia novas solicitações neste setor (`SETOR_SEM_GESTOR` não se aplica — o setor já não passa na validação `ativo = true`).
+- Solicitações já existentes não são afetadas.
+- Erro `INVALID_STATUS` se o setor já estiver inativo.
+
+**Response 200**
+
+```json
+{ "setor_id": 1, "ativo": false }
+```
+
+## reativar_setor
+
+**Quem pode usar:** ADMIN
+
+**Body**
+
+```json
+{ "action": "reativar_setor", "setor_id": 1 }
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Reativa apenas o setor — vínculos de membros devem ser reativados separadamente via `vincular_membro`.
+- Erro `INVALID_STATUS` se o setor já estiver ativo.
+
+**Response 200**
+
+```json
+{ "setor_id": 1, "ativo": true }
+```
+
+## vincular_membro
 
 **Quem pode usar:** ADMIN
 
@@ -608,23 +685,32 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
   "action": "vincular_membro",
   "profile_id": "uuid",
   "setor_id": 1,
-  "role_setor": "MEMBRO"
+  "role_setor": "MEMBRO",
+  "funcao": "ENFA"
 }
 ```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `profile_id` | ✅ | UUID do usuário |
+| `setor_id` | ✅ | ID do setor |
+| `role_setor` | ✅ | `MEMBRO` ou `GESTOR` |
+| `funcao` | ⚪ opcional | Código da função profissional. Deve existir em `tipos_funcao` ativo. |
 
 **Regras de negócio**
 
 - Somente ADMIN.
 - Se `role_setor = 'GESTOR'`: valida que não existe outro gestor ativo no setor → erro `SETOR_GESTOR_DUPLICADO`.
 - Se o vínculo já existir com `ativo = false`: reativa em vez de inserir duplicata.
+- Código de `funcao` inválido ou inativo → erro `FUNCAO_INVALIDA`.
 
 **Response 201**
 
 ```json
-{ "profile_id": "uuid", "setor_id": 1, "role_setor": "GESTOR", "ativo": true }
+{ "profile_id": "uuid", "setor_id": 1, "role_setor": "GESTOR", "funcao": "ENFA", "ativo": true }
 ```
 
-### desativar_membro
+## desativar_membro
 
 **Quem pode usar:** ADMIN
 
@@ -650,7 +736,7 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 { "profile_id": "uuid", "setor_id": 1, "ativo": false }
 ```
 
-### listar_setores
+## listar_setores
 
 **Quem pode usar:** qualquer usuário autenticado
 
@@ -679,7 +765,7 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 }]
 ```
 
-### listar_membros_setor
+## listar_membros_setor
 
 **Quem pode usar:** ADMIN e membros do setor
 
@@ -707,6 +793,7 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
   "nome_completo": "Maria Lima",
   "matricula": "MAT002",
   "role_setor": "MEMBRO",
+  "funcao": "ENFA",
   "ativo": true,
   "bloqueado_mes": true,
   "bloqueio": {
@@ -716,78 +803,8 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 }]
 ```
 
-### editar_setor
-
-**Quem pode usar:** ADMIN
-
-**Body**
-
-```json
-{
-  "action": "editar_setor",
-  "setor_id": 1,
-  "nome": "Novo Nome"
-}
-```
-
-**Regras de negócio**
-
-- Somente ADMIN.
-- Nome deve ser único — erro `CONFLICT` se já estiver em uso por outro setor.
-- Não afeta membros, vínculos ou status `ativo`.
-
-**Response 200**
-
-```json
-{ "id": 1, "nome": "Novo Nome", "ativo": true }
-```
-
-### desativar_setor
-
-**Quem pode usar:** ADMIN
-
-**Body**
-
-```json
-{
-  "action": "desativar_setor",
-  "setor_id": 1
-}
-```
-
-**Regras de negócio**
-
-- Somente ADMIN.
-- Define `setores.ativo = false` e desativa todos os vínculos `profiles_setores` do setor automaticamente.
-- Bloqueia novas solicitações neste setor (`SETOR_SEM_GESTOR` não se aplica — o setor já não passa na validação `ativo = true`).
-- Solicitações já existentes não são afetadas.
-- Erro `INVALID_STATUS` se o setor já estiver inativo.
-
-**Response 200**
-
-```json
-{ "setor_id": 1, "ativo": false }
-```
-### reativar_setor
-
-**Quem pode usar:** ADMIN
-
-**Body**
-
-```json
-{ "action": "reativar_setor", "setor_id": 1 }
-```
-**Regras de negócio**
-- Somente ADMIN.
-- Reativa apenas o setor — vínculos de membros devem ser reativados separadamente via `vincular_membro`.
-- Erro `INVALID_STATUS` se o setor já estiver ativo.
-
-**Response 200**
-```json
-{ "setor_id": 1, "ativo": true }
-```
-
 ---
+
 # ADMIN
 Endpoint: /functions/v1/admin
 
@@ -797,9 +814,9 @@ Authorization: Bearer <jwt>
 Content-Type: application/json
 ```
 
-Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiadas de gerenciamento de usuários e configurações.
+Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiadas de gerenciamento de usuários, configurações e funções profissionais.
 
-### listar_usuarios
+## listar_usuarios
 
 **Quem pode usar:** ADMIN
 
@@ -852,7 +869,7 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 }
 ```
 
-### resetar_senha
+## resetar_senha
 
 **Body**
 
@@ -878,7 +895,7 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 { "success": true }
 ```
 
-### ativar_usuario
+## ativar_usuario
 
 **Body**
 
@@ -901,7 +918,7 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 { "profile_id": "uuid", "ativo": true }
 ```
 
-### desativar_usuario
+## desativar_usuario
 
 **Body**
 
@@ -922,11 +939,13 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 - Não deleta o usuário — histórico de solicitações preservado.
 
 **Response 200 — sem aviso**
+
 ```json
 { "profile_id": "uuid", "ativo": false }
 ```
 
 **Response 200 — com aviso (usuário era gestor)**
+
 ```json
 {
   "profile_id": "uuid",
@@ -937,7 +956,8 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
   ]
 }
 ```
-### editar_usuario
+
+## editar_usuario
 
 **Body**
 
@@ -946,19 +966,31 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
   "action": "editar_usuario",
   "profile_id": "uuid",
   "nome_completo": "Novo Nome",
-  "matricula": "MAT999"
+  "matricula": "MAT999",
+  "setor_id": 1,
+  "funcao": "TEC"
 }
 ```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `profile_id` | ✅ | UUID do usuário a editar |
+| `nome_completo` | ⚪ opcional | 10–64 caracteres |
+| `matricula` | ⚪ opcional | 4–12 caracteres |
+| `setor_id` | ⚪ opcional | Obrigatório quando `funcao` é enviado |
+| `funcao` | ⚪ opcional | Código da função. `setor_id` obrigatório. Vínculo deve existir e estar ativo. |
 
 **Regras de negócio**
 
 - Somente ADMIN.
-- Ao menos um campo (`nome_completo` ou `matricula`) deve ser informado.
+- Ao menos um campo (`nome_completo`, `matricula` ou `funcao`) deve ser informado.
 - Matrícula deve ser única — erro `MATRICULA_DUPLICADA` se já estiver em uso por outro usuário.
 - Matrícula é normalizada para UPPERCASE e deve ter entre 4 e 12 caracteres.
 - Ao alterar a matrícula, o email no sistema de autenticação é sincronizado automaticamente para `{nova_matricula.toLowerCase()}@stp.interno`.
-- Não afeta vínculos de setor, senha ou status `ativo`.
-- Alterar a matrícula reflete imediatamente em todos os joins de histórico e solicitações (comportamento por design).
+- Não afeta vínculos de setor, senha ou status `ativo` (exceto `funcao` via `setor_id`).
+- `funcao` exige `setor_id` → erro `INVALID_PAYLOAD` caso contrário.
+- Código de `funcao` inválido ou inativo → erro `FUNCAO_INVALIDA`.
+- Vínculo inexistente ou inativo ao atualizar `funcao` → erro `NOT_FOUND`.
 
 **Response 200**
 
@@ -971,12 +1003,8 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
   "ativo": true
 }
 ```
-| Campo | Obrigatório | Descrição |
-| --- | --- | --- |
-| `matricula` | ✅ | 4–12 caracteres. |
-| `nome_completo` | ✅ | 10–64 caracteres |
 
-### listar_configuracoes
+## listar_configuracoes
 
 **Body**
 
@@ -1000,7 +1028,7 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 }]
 ```
 
-### atualizar_configuracao
+## atualizar_configuracao
 
 **Body**
 
@@ -1029,7 +1057,7 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 }
 ```
 
-### listar_historico_admin
+## listar_historico_admin
 
 **Body**
 
@@ -1069,8 +1097,104 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 }
 ```
 
+## criar_funcao
+
+**Quem pode usar:** ADMIN
+
+**Body**
+
+```json
+{
+  "action": "criar_funcao",
+  "codigo": "ENFA",
+  "descricao": "Enfermeiro(a)"
+}
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- `codigo` normalizado para UPPERCASE, 2–10 caracteres.
+- `descricao` obrigatória.
+- Erro `FUNCAO_DUPLICADA` se o código já existir.
+
+**Response 201**
+
+```json
+{
+  "codigo": "ENFA",
+  "descricao": "Enfermeiro(a)",
+  "ativo": true,
+  "criado_em": "2026-07-04T00:00:00Z"
+}
+```
+
+## listar_funcoes
+
+**Quem pode usar:** ADMIN
+
+**Body**
+
+```json
+{ "action": "listar_funcoes" }
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Retorna todas as funções ordenadas por `codigo`, incluindo inativas.
+
+**Response 200**
+
+```json
+[{
+  "codigo": "ENFA",
+  "descricao": "Enfermeiro(a)",
+  "ativo": true,
+  "criado_em": "2026-07-04T00:00:00Z"
+}]
+```
+
+## desativar_funcao
+
+**Quem pode usar:** ADMIN
+
+**Body**
+
+```json
+{
+  "action": "desativar_funcao",
+  "codigo": "ENFA"
+}
+```
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Não bloqueia a operação mesmo se houver vínculos ativos usando a função.
+- Retorna `aviso` e `vinculos_ativos` quando houver vínculos afetados — o ADMIN deve revisá-los manualmente.
+- Erro `NOT_FOUND` se o código não existir.
+- Erro `INVALID_STATUS` se a função já estiver inativa.
+
+**Response 200 — sem vínculos afetados**
+
+```json
+{ "codigo": "ENFA", "ativo": false }
+```
+
+**Response 200 — com aviso**
+
+```json
+{
+  "codigo": "ENFA",
+  "ativo": false,
+  "aviso": "3 vínculo(s) ativo(s) ainda usam esta função. Revise os vínculos manualmente.",
+  "vinculos_ativos": 3
+}
+```
 
 ---
+
 # Histórico de Solicitações
 Tabela interna: `solicitacoes_historico`
 
@@ -1094,6 +1218,7 @@ Toda mudança de status em uma solicitação é registrada automaticamente via t
 - Acesso direto bloqueado por RLS — leitura disponível apenas via `SERVICE_ROLE_KEY`.
 
 ---
+
 # Bloqueios de Troca
 Tabela interna: `bloqueios_troca_mes`
 
@@ -1118,6 +1243,29 @@ Controla usuários impedidos de participar de trocas (como requisitante ou ceden
 - Bloqueios não afetam solicitações já existentes.
 - O mês de referência é derivado de `data_requisitante` no momento da criação da solicitação.
 - Gerenciado via actions `bloquear_usuario_mes` e `desbloquear_usuario_mes` em `/functions/v1/solicitacoes`.
+
+---
+
+# Funções Profissionais
+Tabela: `tipos_funcao`
+
+Representa as funções institucionais que os profissionais exercem nos setores (ex: Enfermeiro, Técnico de Enfermagem, Recepcionista).
+
+## Estrutura
+
+| Campo | Tipo | Descrição |
+| --- | --- | --- |
+| `codigo` | text (PK) | Código da função em UPPERCASE (ex: `ENFA`, `TEC`) |
+| `descricao` | text | Nome descritivo da função |
+| `ativo` | boolean | Se a função pode ser usada em novos vínculos |
+| `criado_em` | timestamptz | Data de criação |
+
+## Regras
+
+- Gerenciada exclusivamente pelo ADMIN via actions `criar_funcao`, `listar_funcoes` e `desativar_funcao`.
+- Vinculada a `profiles_setores.funcao` e `solicitacoes.funcao`.
+- Desativar uma função não remove vínculos existentes — apenas impede novos usos.
+- A validação de compatibilidade em trocas considera apenas funções ativas e não-nulas.
 
 ---
 
@@ -1146,6 +1294,12 @@ Controla usuários impedidos de participar de trocas (como requisitante ou ceden
 | `SELF_DEACTIVATION` | 403 | admin tentou desativar a si mesmo |
 | `MATRICULA_DUPLICADA` | 409 | matrícula já está em uso por outro usuário |
 | `USUARIO_BLOQUEADO_MES` | 422 | requisitante ou cedente está bloqueado para trocas neste mês neste setor |
+| `FUNCAO_INCOMPATIVEL` | 422 | requisitante e cedente têm funções diferentes no setor |
+| `FUNCAO_INVALIDA` | 400 | código não existe em `tipos_funcao` ou está inativo |
+| `FUNCAO_DUPLICADA` | 409 | código já existe em `tipos_funcao` |
+
+---
+
 # Status
 
 | Status | Significado |
