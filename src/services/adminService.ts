@@ -117,9 +117,17 @@ interface ListarUsuariosResponse {
   meta: { page: number; per_page: number; total: number }
 }
 
-export async function listarUsuarios(): Promise<AdminUsuario[]> {
-  const res = await callEdgeFunction<ListarUsuariosResponse>('admin', { action: 'listar_usuarios' }, { readOnly: true })
-  return res.data
+export interface ListarUsuariosParams {
+  page?: number
+  per_page?: number
+}
+
+export async function listarUsuarios(params?: ListarUsuariosParams): Promise<ListarUsuariosResponse> {
+  return callEdgeFunction<ListarUsuariosResponse>('admin', { 
+    action: 'listar_usuarios',
+    page: params?.page ?? 1,
+    per_page: params?.per_page ?? 50,
+  }, { readOnly: true })
 }
 
 export interface ResetarSenhaPayload {

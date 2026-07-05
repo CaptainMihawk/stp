@@ -18,15 +18,15 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const [users, setores, configs, funcoes, historico] = await Promise.all([
-          listarUsuarios(),
+        const [usersRes, setores, configs, funcoes, historico] = await Promise.all([
+          listarUsuarios({ page: 1, per_page: 1 }),
           listarSetores(),
           listarConfiguracoes(),
           listarFuncoes(),
           listarHistoricoAdmin(1, 1),
         ]);
 
-        setUserCount(users.filter((u) => u.ativo).length);
+        setUserCount(usersRes.meta.total);
         setSectorCount(setores.filter((s) => s.ativo).length);
         setSectorsWithoutManager(setores.filter((s) => s.ativo && !s.gestor).length);
         setFunctionCount(funcoes.filter((f) => f.ativo).length);

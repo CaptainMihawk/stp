@@ -22,8 +22,8 @@ export default function SectorLinkForm({ setores, onLinked }: SectorLinkFormProp
   const [userSearch, setUserSearch] = useState('');
 
   useEffect(() => {
-    Promise.all([listarUsuarios(), listarFuncoes()]).then(([u, f]) => {
-      setUsuarios(u.filter((u) => u.ativo));
+    Promise.all([listarUsuarios(), listarFuncoes()]).then(([res, f]) => {
+      setUsuarios(res.data.filter((u) => u.ativo));
       setFuncoes(f.filter((f) => f.ativo));
     });
   }, []);

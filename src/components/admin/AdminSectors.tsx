@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building2 } from 'lucide-react';
+import { Building2, Plus, Link2 } from 'lucide-react';
 import { listarSetores, desativarSetor, reativarSetor, editarSetor, desativarMembro, listarMembrosSetor } from '../../services/setoresService';
 import type { MembroSetor, SetorListItem } from '../../services/setoresService';
 import { listarFuncoes, atribuirFuncaoMassa } from '../../services/adminService';
@@ -22,6 +22,8 @@ export default function AdminSectors() {
   const [editTarget, setEditTarget] = useState<SetorListItem | null>(null);
   const [editNome, setEditNome] = useState('');
   const [deactivateMemberTarget, setDeactivateMemberTarget] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showLinkForm, setShowLinkForm] = useState(false);
 
   // Atribuição em massa (dentro do modal)
   const [massFuncao, setMassFuncao] = useState('');
@@ -137,16 +139,32 @@ export default function AdminSectors() {
         </h1>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={{ padding: 16, background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
-          <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Criar Setor</h3>
-          <SectorCreateForm onCreated={loadSetores} />
-        </div>
-        <div style={{ padding: 16, background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
-          <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Vincular Membro</h3>
-          <SectorLinkForm setores={setores.filter((s) => s.ativo)} onLinked={() => { if (selectedSetorId) loadMembers(selectedSetorId); }} />
-        </div>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        <button 
+          className={`admin-btn ${showCreateForm ? 'admin-btn-ghost' : 'admin-btn-primary'}`}
+          onClick={() => { setShowCreateForm(!showCreateForm); setShowLinkForm(false); }}
+        >
+          <Plus size={16} /> Criar Setor
+        </button>
+        <button 
+          className={`admin-btn ${showLinkForm ? 'admin-btn-ghost' : 'admin-btn-primary'}`}
+          onClick={() => { setShowLinkForm(!showLinkForm); setShowCreateForm(false); }}
+        >
+          <Link2 size={16} /> Vincular Membro
+        </button>
       </div>
+
+      {showCreateForm && (
+        <div style={{ marginBottom: 24, padding: 16, background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
+          <SectorCreateForm onCreated={() => { loadSetores(); setShowCreateForm(false); }} />
+        </div>
+      )}
+
+      {showLinkForm && (
+        <div style={{ marginBottom: 24, padding: 16, background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
+          <SectorLinkForm setores={setores.filter((s) => s.ativo)} onLinked={() => { if (selectedSetorId) loadMembers(selectedSetorId); setShowLinkForm(false); }} />
+        </div>
+      )}
 
       {loading ? (
         <div className="sector-cards-grid">
