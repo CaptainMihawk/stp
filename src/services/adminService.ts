@@ -304,3 +304,24 @@ export async function editarFuncao(
     descricao,
   })
 }
+
+export interface AtribuirFuncaoMassaResponse {
+  atualizados: number
+  setor_id: number
+  funcao: string
+  aviso?: string
+  sem_vinculo?: string[]
+}
+
+export async function atribuirFuncaoMassa(
+  profile_ids: string[],
+  setor_id: number,
+  funcao: string,
+): Promise<AtribuirFuncaoMassaResponse> {
+  return callEdgeFunction('admin', {
+    action: 'atribuir_funcao_massa',
+    profile_ids,
+    setor_id,
+    funcao,
+  })
+}
