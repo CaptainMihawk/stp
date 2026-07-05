@@ -1237,6 +1237,53 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 ```json
 { "codigo": "ENFA", "descricao": "Novo texto", "ativo": true }
 ```
+## `atribuir_funcao_massa`
+
+**Quem pode usar:** ADMIN
+
+**Body:**
+```json
+{
+  "action": "atribuir_funcao_massa",
+  "profile_ids": ["uuid1", "uuid2", "uuid3"],
+  "setor_id": 1,
+  "funcao": "ENFA"
+}
+```
+
+| Campo | Obrigatório | Descrição |
+|---|---|---|
+| `profile_ids` | ✅ | Array de UUIDs dos usuários |
+| `setor_id` | ✅ | ID do setor onde os vínculos serão atualizados |
+| `funcao` | ✅ | Código da função profissional. Deve existir em `tipos_funcao` e estar ativo. |
+
+**Regras de negócio**
+- Somente ADMIN.
+- `funcao` deve existir em `tipos_funcao` com `ativo = true` → erro `FUNCAO_INVALIDA`.
+- `setor_id` deve corresponder a um setor com `ativo = true` → erro `NOT_FOUND`.
+- Apenas vínculos com `ativo = true` no setor são atualizados.
+- Usuários sem vínculo ativo no setor são ignorados com aviso — não geram erro.
+- Se nenhum dos `profile_ids` possuir vínculo ativo no setor → erro `NOT_FOUND`.
+
+**Response 200 — todos atualizados:**
+```json
+{
+  "atualizados": 3,
+  "setor_id": 1,
+  "funcao": "ENFA"
+}
+```
+
+**Response 200 — com usuários ignorados:**
+```json
+{
+  "atualizados": 2,
+  "setor_id": 1,
+  "funcao": "ENFA",
+  "aviso": "1 usuário(s) ignorado(s) por não possuírem vínculo ativo neste setor.",
+  "sem_vinculo": ["uuid3"]
+}
+```
 
 ---
 
