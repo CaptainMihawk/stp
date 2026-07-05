@@ -22,8 +22,9 @@ export default function AdminSectors() {
   const [editTarget, setEditTarget] = useState<SetorListItem | null>(null);
   const [editNome, setEditNome] = useState('');
   const [deactivateMemberTarget, setDeactivateMemberTarget] = useState<string | null>(null);
+
+  // Atribuição em massa (dentro do modal)
   const [massFuncao, setMassFuncao] = useState('');
-  const [massSetorId, setMassSetorId] = useState<number | ''>('');
   const [massSelectedMembers, setMassSelectedMembers] = useState<string[]>([]);
   const [funcoesList, setFuncoesList] = useState<TipoFuncao[]>([]);
   const [massLoading, setMassLoading] = useState(false);
@@ -45,6 +46,8 @@ export default function AdminSectors() {
 
   async function loadMembers(setorId: number) {
     setSelectedSetorId(setorId);
+    setMassSelectedMembers([]);
+    setMassFuncao('');
     setLoadingMembers(true);
     try {
       const data = await listarMembrosSetor(setorId);
@@ -55,6 +58,12 @@ export default function AdminSectors() {
     } finally {
       setLoadingMembers(false);
     }
+  }
+
+  function closeModal() {
+    setSelectedSetorId(null);
+    setMassSelectedMembers([]);
+    setMassFuncao('');
   }
 
   async function handleToggleActive(setor: SetorListItem) {
@@ -98,20 +107,21 @@ export default function AdminSectors() {
   }
 
   async function handleMassAssign() {
-    if (!massSetorId || !massFuncao || massSelectedMembers.length === 0) {
-      toast.error('Selecione setor, função e ao menos um membro');
+    if (!selectedSetorId || !massFuncao || massSelectedMembers.length === 0) {
+      toast.error('Selecione função e ao menos um membro');
       return;
     }
     setMassLoading(true);
     try {
-      const result = await atribuirFuncaoMassa(massSelectedMembers, Number(massSetorId), massFuncao);
+      const result = await atribuirFuncaoMassa(massSelectedMembers, selectedSetorId, massFuncao);
       if (result.aviso) {
         toast.warning(`${result.atualizados} atualizado(s). ${result.aviso}`);
       } else {
         toast.success(`${result.atualizados} membro(s) atualizado(s)`);
       }
       setMassSelectedMembers([]);
-      if (selectedSetorId) loadMembers(selectedSetorId);
+      setMassFuncao('');
+      loadMembers(selectedSetorId);
     } catch (err: any) {
       toast.error(err.message || 'Erro na atribuição em massa');
     } finally {
@@ -135,72 +145,6 @@ export default function AdminSectors() {
         <div style={{ padding: 16, background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
           <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Vincular Membro</h3>
           <SectorLinkForm setores={setores.filter((s) => s.ativo)} onLinked={() => { if (selectedSetorId) loadMembers(selectedSetorId); }} />
-        </div>
-      </div>
-
-      <div style={{ padding: 16, background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 24 }}>
-        <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Atribuir Função em Massa</h3>
-        <div className="admin-form-grid">
-          <div className="admin-form-group">
-            <label>Setor</label>
-            <select value={massSetorId} onChange={(e) => { const id = e.target.value ? Number(e.target.value) : ''; setMassSetorId(id); setMassSelectedMembers([]); if (id) loadMembers(Number(id)); }}>
-              <option value="">Selecione...</option>
-              {setores.filter((s) => s.ativo).map((s) => (
-                <option key={s.id} value={s.id}>{s.nome}</option>
-              ))}
-            </select>
-          </div>
-          <div className="admin-form-group">
-            <label>Função</label>
-            <select value={massFuncao} onChange={(e) => setMassFuncao(e.target.value)}>
-              <option value="">Selecione...</option>
-              {funcoesList.filter((f) => f.ativo).map((f) => (
-                <option key={f.codigo} value={f.codigo}>{f.codigo} — {f.descricao}</option>
-              ))}
-            </select>
-          </div>
-          {massSetorId && (
-            <div className="admin-form-group full-width">
-              <label>Membros ativos do setor ({massSelectedMembers.length} selecionados)</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-                {selectedSetorId === Number(massSetorId) ? (
-                  membros.filter((m) => m.ativo).length === 0 ? (
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      Nenhum membro ativo neste setor.
-                    </span>
-                  ) : (
-                    membros.filter((m) => m.ativo).map((m) => (
-                      <label key={m.profile_id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.85rem', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={massSelectedMembers.includes(m.profile_id)}
-                          onChange={(e) => {
-                            setMassSelectedMembers((prev) =>
-                              e.target.checked ? [...prev, m.profile_id] : prev.filter((id) => id !== m.profile_id)
-                            );
-                          }}
-                        />
-                        {m.nome_completo}
-                      </label>
-                    ))
-                  )
-                ) : (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    Clique em "Ver membros" no card do setor primeiro.
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-          <div className="admin-form-group full-width">
-            <button
-              className="admin-btn admin-btn-primary"
-              disabled={massLoading || !massSetorId || !massFuncao || massSelectedMembers.length === 0}
-              onClick={handleMassAssign}
-            >
-              {massLoading ? 'Atribuindo...' : `Atribuir a ${massSelectedMembers.length} membro(s)`}
-            </button>
-          </div>
         </div>
       </div>
 
@@ -229,8 +173,8 @@ export default function AdminSectors() {
       )}
 
       {selectedSetorId && (
-        <div className="modal-overlay" onClick={() => setSelectedSetorId(null)}>
-          <div className="modal-content" style={{ maxWidth: 720 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" style={{ maxWidth: 780 }} onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">
               Membros — {setores.find((s) => s.id === selectedSetorId)?.nome}
             </h3>
@@ -244,10 +188,24 @@ export default function AdminSectors() {
                 ))}
               </div>
             ) : (
-              <SectorMembers members={membros} onDeactivate={(pid) => setDeactivateMemberTarget(pid)} />
+              <SectorMembers
+                members={membros}
+                onDeactivate={(pid) => setDeactivateMemberTarget(pid)}
+                selectionMode
+                selectedIds={massSelectedMembers}
+                onToggleSelect={(pid) => setMassSelectedMembers((prev) =>
+                  prev.includes(pid) ? prev.filter((id) => id !== pid) : [...prev, pid]
+                )}
+                onSelectAll={(checked) => setMassSelectedMembers(checked ? membros.filter((m) => m.ativo).map((m) => m.profile_id) : [])}
+                funcoes={funcoesList.filter((f) => f.ativo)}
+                selectedFuncao={massFuncao}
+                onSelectFuncao={setMassFuncao}
+                onApplyMass={handleMassAssign}
+                massLoading={massLoading}
+              />
             )}
             <div className="modal-actions">
-              <button className="admin-btn admin-btn-ghost" onClick={() => setSelectedSetorId(null)}>Fechar</button>
+              <button className="admin-btn admin-btn-ghost" onClick={closeModal}>Fechar</button>
             </div>
           </div>
         </div>
