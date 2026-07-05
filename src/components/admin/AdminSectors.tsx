@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Building2 } from 'lucide-react';
 import { listarSetores, desativarSetor, reativarSetor, editarSetor, desativarMembro, listarMembrosSetor } from '../../services/setoresService';
 import type { MembroSetor, SetorListItem } from '../../services/setoresService';
+import { listarFuncoes, atribuirFuncaoMassa } from '../../services/adminService';
+import type { TipoFuncao } from '../../services/adminService';
 import { useToast } from '../Toast';
 import { ConfirmDialog } from '../ConfirmDialog';
 import SectorCreateForm from './SectorCreateForm';
@@ -20,6 +22,11 @@ export default function AdminSectors() {
   const [editTarget, setEditTarget] = useState<SetorListItem | null>(null);
   const [editNome, setEditNome] = useState('');
   const [deactivateMemberTarget, setDeactivateMemberTarget] = useState<string | null>(null);
+  const [massFuncao, setMassFuncao] = useState('');
+  const [massSetorId, setMassSetorId] = useState<number | ''>('');
+  const [massSelectedMembers, setMassSelectedMembers] = useState<string[]>([]);
+  const [funcoesList, setFuncoesList] = useState<TipoFuncao[]>([]);
+  const [massLoading, setMassLoading] = useState(false);
 
   async function loadSetores() {
     setLoading(true);
@@ -34,6 +41,7 @@ export default function AdminSectors() {
   }
 
   useEffect(() => { loadSetores(); }, []);
+  useEffect(() => { listarFuncoes().then(setFuncoesList).catch(() => {}); }, []);
 
   async function loadMembers(setorId: number) {
     setSelectedSetorId(setorId);
@@ -89,6 +97,28 @@ export default function AdminSectors() {
     setDeactivateMemberTarget(null);
   }
 
+  async function handleMassAssign() {
+    if (!massSetorId || !massFuncao || massSelectedMembers.length === 0) {
+      toast.error('Selecione setor, função e ao menos um membro');
+      return;
+    }
+    setMassLoading(true);
+    try {
+      const result = await atribuirFuncaoMassa(massSelectedMembers, Number(massSetorId), massFuncao);
+      if (result.aviso) {
+        toast.warning(`${result.atualizados} atualizado(s). ${result.aviso}`);
+      } else {
+        toast.success(`${result.atualizados} membro(s) atualizado(s)`);
+      }
+      setMassSelectedMembers([]);
+      if (selectedSetorId) loadMembers(selectedSetorId);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro na atribuição em massa');
+    } finally {
+      setMassLoading(false);
+    }
+  }
+
   return (
     <div className="admin-page">
       <div className="admin-page-header">
@@ -105,6 +135,72 @@ export default function AdminSectors() {
         <div style={{ padding: 16, background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
           <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Vincular Membro</h3>
           <SectorLinkForm setores={setores.filter((s) => s.ativo)} onLinked={() => { if (selectedSetorId) loadMembers(selectedSetorId); }} />
+        </div>
+      </div>
+
+      <div style={{ padding: 16, background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 24 }}>
+        <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Atribuir Função em Massa</h3>
+        <div className="admin-form-grid">
+          <div className="admin-form-group">
+            <label>Setor</label>
+            <select value={massSetorId} onChange={(e) => { const id = e.target.value ? Number(e.target.value) : ''; setMassSetorId(id); setMassSelectedMembers([]); if (id) loadMembers(Number(id)); }}>
+              <option value="">Selecione...</option>
+              {setores.filter((s) => s.ativo).map((s) => (
+                <option key={s.id} value={s.id}>{s.nome}</option>
+              ))}
+            </select>
+          </div>
+          <div className="admin-form-group">
+            <label>Função</label>
+            <select value={massFuncao} onChange={(e) => setMassFuncao(e.target.value)}>
+              <option value="">Selecione...</option>
+              {funcoesList.filter((f) => f.ativo).map((f) => (
+                <option key={f.codigo} value={f.codigo}>{f.codigo} — {f.descricao}</option>
+              ))}
+            </select>
+          </div>
+          {massSetorId && (
+            <div className="admin-form-group full-width">
+              <label>Membros ativos do setor ({massSelectedMembers.length} selecionados)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                {selectedSetorId === Number(massSetorId) ? (
+                  membros.filter((m) => m.ativo).length === 0 ? (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      Nenhum membro ativo neste setor.
+                    </span>
+                  ) : (
+                    membros.filter((m) => m.ativo).map((m) => (
+                      <label key={m.profile_id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.85rem', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={massSelectedMembers.includes(m.profile_id)}
+                          onChange={(e) => {
+                            setMassSelectedMembers((prev) =>
+                              e.target.checked ? [...prev, m.profile_id] : prev.filter((id) => id !== m.profile_id)
+                            );
+                          }}
+                        />
+                        {m.nome_completo}
+                      </label>
+                    ))
+                  )
+                ) : (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    Clique em "Ver membros" no card do setor primeiro.
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="admin-form-group full-width">
+            <button
+              className="admin-btn admin-btn-primary"
+              disabled={massLoading || !massSetorId || !massFuncao || massSelectedMembers.length === 0}
+              onClick={handleMassAssign}
+            >
+              {massLoading ? 'Atribuindo...' : `Atribuir a ${massSelectedMembers.length} membro(s)`}
+            </button>
+          </div>
         </div>
       </div>
 
