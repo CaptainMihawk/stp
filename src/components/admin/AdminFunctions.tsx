@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Briefcase, Plus } from 'lucide-react';
-import { listarFuncoes, desativarFuncao } from '../../services/adminService';
+import { listarFuncoes, desativarFuncao, reativarFuncao, editarFuncao } from '../../services/adminService';
 import type { TipoFuncao } from '../../services/adminService';
 import { useToast } from '../Toast';
 import { ConfirmDialog } from '../ConfirmDialog';
@@ -13,6 +13,9 @@ export default function AdminFunctions() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [deactivateTarget, setDeactivateTarget] = useState<string | null>(null);
+  const [reactivateTarget, setReactivateTarget] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<TipoFuncao | null>(null);
+  const [editDescricao, setEditDescricao] = useState('');
 
   async function loadFuncoes() {
     setLoading(true);
@@ -44,6 +47,30 @@ export default function AdminFunctions() {
     setDeactivateTarget(null);
   }
 
+  async function handleReactivate() {
+    if (!reactivateTarget) return;
+    try {
+      await reativarFuncao(reactivateTarget);
+      toast.success('Função reativada');
+      loadFuncoes();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao reativar');
+    }
+    setReactivateTarget(null);
+  }
+
+  async function handleEditSave() {
+    if (!editTarget || !editDescricao.trim()) return;
+    try {
+      await editarFuncao(editTarget.codigo, editDescricao.trim());
+      toast.success('Função atualizada');
+      setEditTarget(null);
+      loadFuncoes();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao editar');
+    }
+  }
+
   return (
     <div className="admin-page">
       <div className="admin-page-header">
@@ -71,7 +98,12 @@ export default function AdminFunctions() {
           ))}
         </div>
       ) : (
-        <FunctionTable funcoes={funcoes} onDeactivate={(codigo) => setDeactivateTarget(codigo)} />
+        <FunctionTable
+          funcoes={funcoes}
+          onDeactivate={(codigo) => setDeactivateTarget(codigo)}
+          onReactivate={(codigo) => setReactivateTarget(codigo)}
+          onEdit={(f) => { setEditTarget(f); setEditDescricao(f.descricao); }}
+        />
       )}
 
       <ConfirmDialog
@@ -83,6 +115,36 @@ export default function AdminFunctions() {
         onConfirm={handleDeactivate}
         onCancel={() => setDeactivateTarget(null)}
       />
+
+      <ConfirmDialog
+        open={!!reactivateTarget}
+        title="Reativar Função"
+        message={`Reativar a função ${reactivateTarget}?`}
+        confirmLabel="Reativar"
+        confirmClass="success-button"
+        onConfirm={handleReactivate}
+        onCancel={() => setReactivateTarget(null)}
+      />
+
+      {editTarget && (
+        <div className="modal-overlay" onClick={() => setEditTarget(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Editar Função — {editTarget.codigo}</h3>
+            <div className="admin-form-group">
+              <label>Descrição</label>
+              <input
+                value={editDescricao}
+                onChange={(e) => setEditDescricao(e.target.value)}
+                maxLength={64}
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="admin-btn admin-btn-ghost" onClick={() => setEditTarget(null)}>Cancelar</button>
+              <button className="admin-btn admin-btn-primary" onClick={handleEditSave}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

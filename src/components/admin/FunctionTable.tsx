@@ -1,12 +1,14 @@
-import { Trash2 } from 'lucide-react';
+import { Trash2, RotateCcw } from 'lucide-react';
 import type { TipoFuncao } from '../../services/adminService';
 
 interface FunctionTableProps {
   funcoes: TipoFuncao[];
   onDeactivate: (codigo: string) => void;
+  onReactivate: (codigo: string) => void;
+  onEdit: (funcao: TipoFuncao) => void;
 }
 
-export default function FunctionTable({ funcoes, onDeactivate }: FunctionTableProps) {
+export default function FunctionTable({ funcoes, onDeactivate, onReactivate, onEdit }: FunctionTableProps) {
   if (funcoes.length === 0) {
     return <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}>Nenhuma função cadastrada.</p>;
   }
@@ -32,9 +34,16 @@ export default function FunctionTable({ funcoes, onDeactivate }: FunctionTablePr
               </span>
             </td>
             <td data-label="Ação">
-              {f.ativo && (
+              <button className="admin-btn-icon" title="Editar" onClick={() => onEdit(f)}>
+                ✏️
+              </button>
+              {f.ativo ? (
                 <button className="admin-btn-icon" title="Desativar" onClick={() => onDeactivate(f.codigo)}>
                   <Trash2 size={15} />
+                </button>
+              ) : (
+                <button className="admin-btn-icon" title="Reativar" onClick={() => onReactivate(f.codigo)}>
+                  <RotateCcw size={15} />
                 </button>
               )}
             </td>
