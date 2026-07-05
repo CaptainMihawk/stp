@@ -1212,6 +1212,31 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 ```json
 { "codigo": "ENFA", "descricao": "Enfermagem A", "ativo": true }
 ```
+## editar_funcao
+
+**Quem pode usar:** ADMIN
+
+```json
+{
+  "action": "editar_funcao",
+  "codigo": "ENFA",
+  "descricao": "Novo texto"
+}
+```
+
+**Regras de negócio**
+- Somente ADMIN.
+- `codigo` normalizado para UPPERCASE antes da busca.
+- `descricao` obrigatória.
+- Se a função não existir → erro `NOT_FOUND`.
+- `descricao` já em uso por outro `codigo` → erro `FUNCAO_DUPLICADA`.
+- Reenviar a mesma descrição existente não dispara erro.
+- Não afeta `ativo`, `criado_em` nem vínculos.
+
+**Response 200**
+```json
+{ "codigo": "ENFA", "descricao": "Novo texto", "ativo": true }
+```
 
 ---
 
@@ -1317,6 +1342,7 @@ Representa as funções institucionais que os profissionais exercem nos setores 
 | `FUNCAO_INCOMPATIVEL` | 422 | requisitante e cedente têm funções diferentes no setor |
 | `FUNCAO_INVALIDA` | 400 | código não existe em `tipos_funcao` ou está inativo |
 | `FUNCAO_DUPLICADA` | 409 | código já existe em `tipos_funcao` |
+| `FUNCAO_DUPLICADA` | 409 | código **ou descrição** já existe em `tipos_funcao` |
 
 ---
 
