@@ -284,3 +284,23 @@ export async function desativarFuncao(
     codigo,
   })
 }
+
+export async function reativarFuncao(
+  codigo: string,
+): Promise<TipoFuncao> {
+  return callEdgeFunction('admin', {
+    action: 'reativar_funcao',
+    codigo,
+  })
+}
+
+export async function editarFuncao(
+  codigo: string,
+  descricao: string,
+): Promise<TipoFuncao> {
+  return callEdgeFunction('admin', {
+    action: 'editar_funcao',
+    codigo,
+    descricao,
+  })
+}
