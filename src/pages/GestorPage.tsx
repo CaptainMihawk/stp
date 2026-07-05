@@ -28,6 +28,7 @@ export function GestorPage() {
   const [solicitacoes, setSolicitacoes] = useState<solicitacoesService.SolicitacaoListItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null)
+  const [counts, setCounts] = useState<{ pendente: number; pedido_revogacao: number }>({ pendente: 0, pedido_revogacao: 0 })
 
   // Usuários tab — gestão de bloqueios
   const [usuariosSetorId, setUsuariosSetorId] = useState<string>('')
@@ -68,6 +69,9 @@ export function GestorPage() {
       // Ordena da mais nova para a mais antiga
       response.data.sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
       setSolicitacoes(response.data)
+      if (response.counts) {
+        setCounts(response.counts)
+      }
     } catch (err) {
       toast.error(handleError(err, { endpoint: 'solicitacoes', action: 'listar_solicitacoes_gestor' }))
     } finally {
@@ -108,11 +112,13 @@ export function GestorPage() {
   const listAprovadas = solicitacoes.filter((s) => s.status === 'aprovado')
   const listHistorico = solicitacoes.filter((s) => isStatusTerminal(s.status))
 
-  // Badges for Gestor tabs — homologação mostra total que precisa de ação
-  const totalPendentesAcao = listPendentes.length + listRevogacao.length
+  // Badges for Gestor tabs — uses backend counts when available, fallback to local filter
+  const pendenteCount = !statusFiltro && !mesFiltro ? counts.pendente : listPendentes.length
+  const revogacaoCount = !statusFiltro && !mesFiltro ? counts.pedido_revogacao : listRevogacao.length
+  const totalPendentesAcao = pendenteCount + revogacaoCount
   const tabOptions: TabOption[] = [
     { id: 'pendentes', label: 'Homologação', icon: '📝', badge: totalPendentesAcao },
-    { id: 'revogacao', label: 'Pedidos de Revogação', icon: '🔄', badge: listRevogacao.length },
+    { id: 'revogacao', label: 'Pedidos de Revogação', icon: '🔄', badge: revogacaoCount },
     { id: 'aguardando', label: 'Aguardando Cedente', icon: '⏳', badge: listAguardando.length },
     { id: 'aprovadas', label: 'Aprovadas', icon: '✅' },
     { id: 'historico', label: 'Histórico', icon: '📜' },

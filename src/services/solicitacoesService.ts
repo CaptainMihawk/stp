@@ -187,6 +187,10 @@ export interface SolicitacaoListResponse {
     total: number
     total_pages: number
   }
+  counts?: {
+    pendente: number
+    pedido_revogacao: number
+  }
 }
 
 export async function listarSolicitacoes(
