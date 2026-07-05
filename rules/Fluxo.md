@@ -868,6 +868,62 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
   }
 }
 ```
+## pesquisar_usuarios
+
+**Quem pode usar:** ADMIN
+
+**Body**
+
+```json
+{
+  "action": "pesquisar_usuarios",
+  "termo": "silva",
+  "page": 1,
+  "per_page": 20,
+  "ativo": true,
+  "role": "FUNCIONARIO"
+}
+```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `termo` | obrigatório | Texto para busca. Mínimo 1 caracteres. Busca parcial (`ILIKE %termo%`) em `nome_completo` e `matricula` |
+| `page` | opcional | Número da página. Padrão: `1` |
+| `per_page` | opcional | Itens por página. Padrão: `20`, máximo: `100` |
+| `ativo` | opcional | Filtra por status do usuário: `true` ou `false` |
+| `role` | opcional | Filtra por role global: `"ADMIN"`, `"GESTOR"` ou `"FUNCIONARIO"` |
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- `termo` é obrigatório e deve ter no mínimo 1 caracteres → erro `INVALID_PAYLOAD`.
+- Busca simultânea em `nome_completo` e `matricula` com `ILIKE %termo%` (case-insensitive, correspondência parcial).
+- `ativo` e `role` são independentes e combináveis com o `termo`.
+- Retorna email e último login vindos do auth, com o mesmo padrão de `listar_usuarios`.
+- Não expõe `encrypted_password` nem tokens internos.
+
+**Response 200**
+
+```json
+{
+  "data": [{
+    "id": "uuid",
+    "nome_completo": "João Silva",
+    "matricula": "MAT001",
+    "role": "FUNCIONARIO",
+    "ativo": true,
+    "email": "mat001@stp.interno",
+    "ultimo_login": "2026-06-01T10:00:00Z",
+    "criado_em": "2026-05-01T00:00:00Z"
+  }],
+  "meta": {
+    "page": 1,
+    "per_page": 20,
+    "total": 3,
+    "termo": "silva"
+  }
+}
+```
 
 ## resetar_senha
 
