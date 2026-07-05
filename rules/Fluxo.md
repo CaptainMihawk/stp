@@ -843,7 +843,6 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 
 - Somente ADMIN.
 - Retorna todos os profiles com email e último login vindos do auth.
-- Não expõe `encrypted_password` nem tokens internos.
 - `ativo` e `role` são independentes e combináveis.
 - Sem filtros, retorna todos os usuários paginados.
 
@@ -878,6 +877,7 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 {
   "action": "pesquisar_usuarios",
   "termo": "silva",
+  "setor_id": 1,
   "page": 1,
   "per_page": 20,
   "ativo": true,
@@ -885,22 +885,23 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
 }
 ```
 
-| Campo | Obrigatório | Descrição |
-| --- | --- | --- |
-| `termo` | obrigatório | Texto para busca. Mínimo 1 caracteres. Busca parcial (`ILIKE %termo%`) em `nome_completo` e `matricula` |
-| `page` | opcional | Número da página. Padrão: `1` |
-| `per_page` | opcional | Itens por página. Padrão: `20`, máximo: `100` |
-| `ativo` | opcional | Filtra por status do usuário: `true` ou `false` |
-| `role` | opcional | Filtra por role global: `"ADMIN"`, `"GESTOR"` ou `"FUNCIONARIO"` |
+| Campo      | Obrigatório | Descrição                                                                                              |
+| ---------- | ----------- | ------------------------------------------------------------------------------------------------------ |
+| `termo`    | obrigatório | Texto para busca. Mínimo 2 caracteres. Busca parcial em `nome_completo` e `matricula` |
+| `page`     | opcional    | Número da página. Padrão: `1`                                                                          |
+| `per_page` | opcional    | Itens por página. Padrão: `20`, máximo: `100`                                                          |
+| `ativo`    | opcional    | Filtra por status do usuário: `true` ou `false`                                                        |
+| `role`     | opcional    | Filtra por role global: `"ADMIN"` ou `"FUNCIONARIO"`                                       |
+| `setor_id` | opcional    | Restringe a busca a usuários com vínculo ativo neste setor                                             |
 
 **Regras de negócio**
 
 - Somente ADMIN.
-- `termo` é obrigatório e deve ter no mínimo 1 caracteres → erro `INVALID_PAYLOAD`.
+- `termo` é obrigatório e deve ter no mínimo 2 caracteres → erro `INVALID_PAYLOAD`.
 - Busca simultânea em `nome_completo` e `matricula` com `ILIKE %termo%` (case-insensitive, correspondência parcial).
-- `ativo` e `role` são independentes e combináveis com o `termo`.
+- `ativo`, `role` e `setor_id` são independentes e combináveis com o `termo`.
+- `setor_id` é opcional — quando informado, restringe os resultados a profiles que possuem vínculo ativo (`profiles_setores.ativo = true`) naquele setor.
 - Retorna email e último login vindos do auth, com o mesmo padrão de `listar_usuarios`.
-- Não expõe `encrypted_password` nem tokens internos.
 
 **Response 200**
 
