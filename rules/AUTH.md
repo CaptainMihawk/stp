@@ -45,7 +45,6 @@ Content-Type: application/json
 - A matrícula é normalizada para UPPERCASE antes de salvar.
 - O email de login é gerado automaticamente: `{matricula.toLowerCase()}@stp.interno`.
 - `setor_id` e `role_setor` devem ser enviados juntos ou nenhum dos dois.
-- Se `role_setor = 'GESTOR'`: valida que não existe outro gestor ativo no setor → erro `SETOR_GESTOR_DUPLICADO`.
 - Se o vínculo com setor falhar, o usuário criado no Auth é removido (rollback).
 - `role` global e `role_setor` são **independentes**: um `FUNCIONARIO` pode ser `GESTOR` de um setor.
 - `funcao` é obrigatoriamente acompanhada de `setor_id` → erro `INVALID_PAYLOAD` caso contrário.
@@ -167,7 +166,6 @@ Se o usuário foi criado sem setor, o ADMIN pode vinculá-lo depois via `/functi
 | `FORBIDDEN` | 403 | Chamador não é ADMIN |
 | `INVALID_PAYLOAD` | 400 | Campo inválido ou ausente |
 | `CONFLICT` | 409 | Matrícula já cadastrada |
-| `SETOR_GESTOR_DUPLICADO` | 409 | Já existe gestor ativo no setor |
 | `FUNCAO_INVALIDA` | 400 | Código não existe em `tipos_funcao` ou está inativo |
 | `INTERNAL_ERROR` | 500 | Erro ao salvar perfil ou vínculo (com rollback) |
 | `INVALID_CREDENTIALS` | 401 | Matrícula ou senha inválidos |
