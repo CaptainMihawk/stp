@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Building2, Plus, Link2 } from 'lucide-react';
-import { listarSetores, desativarSetor, reativarSetor, editarSetor, desativarMembro, listarMembrosSetor } from '../../services/setoresService';
+import { listarSetores, desativarSetor, reativarSetor, editarSetor, desativarMembro, listarMembrosSetor, alterarRoleSetor } from '../../services/setoresService';
 import type { MembroSetor, SetorListItem } from '../../services/setoresService';
 import { listarFuncoes, atribuirFuncaoMassa } from '../../services/adminService';
 import type { TipoFuncao } from '../../services/adminService';
@@ -25,7 +25,16 @@ export default function AdminSectors() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showLinkForm, setShowLinkForm] = useState(false);
 
+  // Alterar role de membro
+  const [alterRoleTarget, setAlterRoleTarget] = useState<{
+    profile_id: string;
+    nome: string;
+    role_atual: string;
+    novo_role: 'MEMBRO' | 'GESTOR';
+  } | null>(null);
+
   // Atribuição em massa (dentro do modal)
+  const [showInactiveMembers, setShowInactiveMembers] = useState(false);
   const [massFuncao, setMassFuncao] = useState('');
   const [massSelectedMembers, setMassSelectedMembers] = useState<string[]>([]);
   const [funcoesList, setFuncoesList] = useState<TipoFuncao[]>([]);
@@ -66,6 +75,7 @@ export default function AdminSectors() {
     setSelectedSetorId(null);
     setMassSelectedMembers([]);
     setMassFuncao('');
+    setShowInactiveMembers(false);
   }
 
   async function handleToggleActive(setor: SetorListItem) {
@@ -100,12 +110,36 @@ export default function AdminSectors() {
     if (!selectedSetorId) return;
     try {
       await desativarMembro(profileId, selectedSetorId);
-      toast.success('Vínculo desativado');
+      toast.success('Vínculo removido');
       loadMembers(selectedSetorId);
     } catch (err: any) {
       toast.error(err.message || 'Erro');
     }
     setDeactivateMemberTarget(null);
+  }
+
+  async function handleAlterarRole(profile_id: string, novo_role_setor: 'MEMBRO' | 'GESTOR') {
+    const membro = membros.find((m) => m.profile_id === profile_id);
+    if (!membro || !selectedSetorId) return;
+    setAlterRoleTarget({
+      profile_id,
+      nome: membro.nome_completo,
+      role_atual: membro.role_setor,
+      novo_role: novo_role_setor,
+    });
+  }
+
+  async function confirmAlterarRole() {
+    if (!alterRoleTarget || !selectedSetorId) return;
+    try {
+      await alterarRoleSetor(alterRoleTarget.profile_id, selectedSetorId, alterRoleTarget.novo_role);
+      toast.success(`Papel alterado para ${alterRoleTarget.novo_role}`);
+      setAlterRoleTarget(null);
+      loadMembers(selectedSetorId);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao alterar papel');
+      setAlterRoleTarget(null);
+    }
   }
 
   async function handleMassAssign() {
@@ -195,6 +229,12 @@ export default function AdminSectors() {
           <div className="modal-content" style={{ maxWidth: 780 }} onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">
               Membros — {setores.find((s) => s.id === selectedSetorId)?.nome}
+              {membros.length > 0 && (
+                <span style={{ fontSize: '0.85rem', fontWeight: 400, marginLeft: 8, color: 'var(--text-muted)' }}>
+                  ({membros.filter((m) => m.ativo).length} ativos
+                  {membros.filter((m) => !m.ativo).length > 0 && `, ${membros.filter((m) => !m.ativo).length} inativos`})
+                </span>
+              )}
             </h3>
             {loadingMembers ? (
               <div>
@@ -220,6 +260,9 @@ export default function AdminSectors() {
                 onSelectFuncao={setMassFuncao}
                 onApplyMass={handleMassAssign}
                 massLoading={massLoading}
+                showInactive={showInactiveMembers}
+                onToggleInactive={() => setShowInactiveMembers((prev) => !prev)}
+                onAlterarRole={handleAlterarRole}
               />
             )}
             <div className="modal-actions">
@@ -248,7 +291,7 @@ export default function AdminSectors() {
       <ConfirmDialog
         open={!!deactivateTarget}
         title={deactivateTarget?.ativo ? 'Desativar Setor' : 'Reativar Setor'}
-        message={deactivateTarget?.ativo ? `Desativar ${deactivateTarget?.nome}? Todos os vínculos serão desativados.` : `Reativar ${deactivateTarget?.nome}?`}
+        message={deactivateTarget?.ativo ? `Desativar ${deactivateTarget?.nome}? Todos os vínculos serão removidos.` : `Reativar ${deactivateTarget?.nome}? Os vínculos anteriores foram removidos e precisarão ser recriados.`}
         confirmLabel={deactivateTarget?.ativo ? 'Desativar' : 'Reativar'}
         confirmClass={deactivateTarget?.ativo ? 'danger-button' : 'success-button'}
         onConfirm={() => deactivateTarget && handleToggleActive(deactivateTarget)}
@@ -257,12 +300,30 @@ export default function AdminSectors() {
 
       <ConfirmDialog
         open={!!deactivateMemberTarget}
-        title="Desativar Vínculo"
-        message="Tem certeza que deseja desativar este vínculo?"
-        confirmLabel="Desativar"
+        title="Remover Vínculo"
+        message="Tem certeza que deseja remover este vínculo? O usuário perderá acesso ao setor."
+        confirmLabel="Remover"
         confirmClass="danger-button"
         onConfirm={() => deactivateMemberTarget && handleDeactivateMember(deactivateMemberTarget)}
         onCancel={() => setDeactivateMemberTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={!!alterRoleTarget}
+        title="Alterar Papel"
+        message={
+          alterRoleTarget?.role_atual === 'GESTOR' && alterRoleTarget?.novo_role === 'MEMBRO'
+            ? `Alterar papel de ${alterRoleTarget.nome} de GESTOR para MEMBRO? ${
+                membros.filter((m) => m.role_setor === 'GESTOR' && m.ativo).length <= 1
+                  ? 'O setor ficará sem gestor ativo até que um novo gestor seja designado.'
+                  : 'O setor poderá ficar sem gestor ativo.'
+              }`
+            : `Alterar papel de ${alterRoleTarget?.nome} de ${alterRoleTarget?.role_atual} para ${alterRoleTarget?.novo_role}?`
+        }
+        confirmLabel="Alterar"
+        confirmClass="primary-button"
+        onConfirm={confirmAlterarRole}
+        onCancel={() => setAlterRoleTarget(null)}
       />
     </div>
   );

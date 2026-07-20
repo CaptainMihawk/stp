@@ -10,7 +10,7 @@ interface ConfirmDialogProps {
   message: string
   confirmLabel?: string
   cancelLabel?: string
-  confirmClass?: 'danger-button' | 'success-button'
+  confirmClass?: 'danger-button' | 'success-button' | 'primary-button'
   loading?: boolean
   onConfirm: () => void
   onCancel: () => void

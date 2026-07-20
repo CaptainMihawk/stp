@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { vincularMembro } from '../../services/setoresService';
-import { listarUsuarios, listarFuncoes } from '../../services/adminService';
+import { pesquisarUsuarios, listarFuncoes } from '../../services/adminService';
 import { useToast } from '../Toast';
 import type { AdminUsuario } from '../../services/adminService';
 import type { TipoFuncao } from '../../services/adminService';
@@ -16,23 +16,43 @@ export default function SectorLinkForm({ setores, onLinked }: SectorLinkFormProp
   const [profileId, setProfileId] = useState('');
   const [roleSetor, setRoleSetor] = useState<'MEMBRO' | 'GESTOR'>('MEMBRO');
   const [funcao, setFuncao] = useState('');
-  const [usuarios, setUsuarios] = useState<AdminUsuario[]>([]);
   const [funcoes, setFuncoes] = useState<TipoFuncao[]>([]);
   const [loading, setLoading] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<AdminUsuario[]>([]);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    Promise.all([listarUsuarios(), listarFuncoes()]).then(([res, f]) => {
-      setUsuarios(res.data.filter((u) => u.ativo));
-      setFuncoes(f.filter((f) => f.ativo));
-    });
+    listarFuncoes().then((f) => setFuncoes(f.filter((f) => f.ativo)));
   }, []);
 
-  const filteredUsers = usuarios.filter((u) => {
-    if (!userSearch) return true;
-    const term = userSearch.toLowerCase();
-    return u.nome_completo.toLowerCase().includes(term) || u.matricula.toLowerCase().includes(term);
-  });
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    const term = userSearch.trim();
+    if (term.length < 2) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+
+    setSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await pesquisarUsuarios({ termo: term, ativo: true, per_page: 20 });
+        setSearchResults(res.data);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [userSearch]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -78,19 +98,30 @@ export default function SectorLinkForm({ setores, onLinked }: SectorLinkFormProp
           value={userSearch}
           onChange={(e) => { setUserSearch(e.target.value); setProfileId(''); }}
         />
-        {userSearch && !profileId && (
+        {userSearch && !profileId && userSearch.trim().length < 2 && (
+          <div style={{ padding: '6px 10px', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>
+            Digite ao menos 2 caracteres para buscar
+          </div>
+        )}
+        {userSearch && !profileId && userSearch.trim().length >= 2 && (
           <div style={{ border: '1px solid var(--border)', borderRadius: 8, maxHeight: 150, overflow: 'auto', marginTop: 4 }}>
-            {filteredUsers.slice(0, 10).map((u) => (
-              <div
-                key={u.id}
-                style={{ padding: '6px 10px', cursor: 'pointer', fontSize: '0.85rem' }}
-                onClick={() => { setProfileId(u.id); setUserSearch(`${u.matricula} — ${u.nome_completo}`); }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--hover-bg)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = '')}
-              >
-                {u.matricula} — {u.nome_completo}
-              </div>
-            ))}
+            {searching ? (
+              <div style={{ padding: '6px 10px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Buscando...</div>
+            ) : searchResults.length === 0 ? (
+              <div style={{ padding: '6px 10px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Nenhum usuário encontrado</div>
+            ) : (
+              searchResults.slice(0, 10).map((u) => (
+                <div
+                  key={u.id}
+                  style={{ padding: '6px 10px', cursor: 'pointer', fontSize: '0.85rem' }}
+                  onClick={() => { setProfileId(u.id); setUserSearch(`${u.matricula} — ${u.nome_completo}`); }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--hover-bg)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                >
+                  {u.matricula} — {u.nome_completo}
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>

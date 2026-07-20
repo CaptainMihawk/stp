@@ -58,7 +58,7 @@ export interface Solicitacao {
   id: number
   requisitante_id: string
   cedente_id: string
-  gestor_responsavel_id: string
+  gestor_responsavel_id: string | null
   setor_id: number | null
   data_requisitante: string     
   turno_requisitante: Turno

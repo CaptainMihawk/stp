@@ -1,6 +1,6 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Users, Plus } from 'lucide-react';
-import { listarUsuarios, desativarUsuario, ativarUsuario } from '../../services/adminService';
+import { listarUsuarios, pesquisarUsuarios, desativarUsuario, ativarUsuario } from '../../services/adminService';
 import { useAuth } from '../../contexts/AuthContext';
 import type { AdminUsuario } from '../../services/adminService';
 import { useToast } from '../Toast';
@@ -48,19 +48,43 @@ export default function AdminUsers() {
   const [total, setTotal] = useState(0);
   const perPage = 50;
 
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchTerm]);
+
   function setPage(p: number) {
     const params = new URLSearchParams(searchParams);
     params.set('page', String(p));
     setSearchParams(params, { replace: true });
   }
 
-  async function loadUsers(p: number) {
+  async function loadUsers() {
     setLoading(true);
     try {
-      const res = await listarUsuarios({ page: p, per_page: perPage });
-      setUsers(res.data);
-      setTotalPages(Math.ceil(res.meta.total / res.meta.per_page));
-      setTotal(res.meta.total);
+      const hasSearch = debouncedSearch.length >= 2;
+      const ativo = statusFilter === 'true' ? true : statusFilter === 'false' ? false : undefined;
+      const role = (roleFilter as 'ADMIN' | 'FUNCIONARIO' | '') || undefined;
+
+      if (hasSearch) {
+        const res = await pesquisarUsuarios({ termo: debouncedSearch, page, per_page: perPage, ativo, role });
+        setUsers(res.data);
+        setTotalPages(Math.ceil(res.meta.total / res.meta.per_page));
+        setTotal(res.meta.total);
+      } else {
+        const res = await listarUsuarios({ page, per_page: perPage, ativo, role });
+        setUsers(res.data);
+        setTotalPages(Math.ceil(res.meta.total / res.meta.per_page));
+        setTotal(res.meta.total);
+      }
     } catch {
       toast.error('Erro ao carregar usuários');
     } finally {
@@ -68,20 +92,22 @@ export default function AdminUsers() {
     }
   }
 
-  useEffect(() => { loadUsers(page); }, [page]);
+  const lastFilterKey = useRef('');
 
-  const filtered = useMemo(() => {
-    return users.filter((u) => {
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        if (!u.nome_completo.toLowerCase().includes(term) && !u.matricula.toLowerCase().includes(term)) return false;
+  useEffect(() => {
+    const currentKey = `${debouncedSearch}|${roleFilter}|${statusFilter}`;
+    const currentPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+
+    if (currentKey !== lastFilterKey.current) {
+      lastFilterKey.current = currentKey;
+      if (currentPage !== 1) {
+        setPage(1);
+        return;
       }
-      if (roleFilter && u.role !== roleFilter) return false;
-      if (statusFilter === 'true' && !u.ativo) return false;
-      if (statusFilter === 'false' && u.ativo) return false;
-      return true;
-    });
-  }, [users, searchTerm, roleFilter, statusFilter]);
+    }
+
+    void loadUsers();
+  }, [page, debouncedSearch, roleFilter, statusFilter]);
 
   async function handleToggleActive(user: AdminUsuario) {
     try {
@@ -96,7 +122,7 @@ export default function AdminUsers() {
         await ativarUsuario(user.id);
         toast.success('Usuário ativado');
       }
-      loadUsers(page);
+      void loadUsers();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao alterar status');
     }
@@ -118,7 +144,7 @@ export default function AdminUsers() {
 
       {showForm && (
         <div style={{ marginBottom: 24, padding: 16, background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
-          <UserForm onCreated={() => { loadUsers(page); setShowForm(false); }} />
+          <UserForm onCreated={() => { void loadUsers(); setShowForm(false); }} />
         </div>
       )}
 
@@ -153,7 +179,7 @@ export default function AdminUsers() {
       ) : (
         <>
           <UserTable
-            users={filtered}
+            users={users}
             currentUserId={profile?.id}
             onEdit={setEditTarget}
             onResetPassword={setResetTarget}
@@ -198,7 +224,7 @@ export default function AdminUsers() {
       )}
 
       {editTarget && (
-        <UserEditModal user={editTarget} onClose={() => setEditTarget(null)} onSaved={() => { loadUsers(page); setEditTarget(null); }} />
+        <UserEditModal user={editTarget} onClose={() => setEditTarget(null)} onSaved={() => { void loadUsers(); setEditTarget(null); }} />
       )}
 
       {resetTarget && (

@@ -9,7 +9,7 @@ export interface SetorListItem {
   id: number
   nome: string
   ativo: boolean
-  gestor: { nome_completo: string; matricula: string } | null
+  gestores: { nome_completo: string; matricula: string }[]
   total_membros: number
 }
 
@@ -67,9 +67,23 @@ export async function criarSetor(
 }
 
 // ---------------------------------------------------------------------------
+// Alterar role de membro no setor (ADMIN only)
+// Troca entre MEMBRO e GESTOR sem recriar o vínculo.
+// Erro NOT_FOUND se vínculo não existir ou estiver inativo.
+// Erro INVALID_PAYLOAD se novo_role for igual ao atual.
+// Um GESTOR pode ser alterado para MEMBRO mesmo que seja o único gestor do setor.
+// ---------------------------------------------------------------------------
+
+export async function alterarRoleSetor(
+  profile_id: string,
+  setor_id: number,
+  novo_role_setor: 'MEMBRO' | 'GESTOR',
+): Promise<{ profile_id: string; setor_id: number; role_setor: string; ativo: boolean }> {
+  return callEdgeFunction('setores', { action: 'alterar_role_setor', profile_id, setor_id, novo_role_setor })
+}
+
+// ---------------------------------------------------------------------------
 // Vincular membro ao setor (ADMIN only)
-// Se role_setor = 'GESTOR' e já houver gestor ativo → erro SETOR_GESTOR_DUPLICADO
-// Se o vínculo existir com ativo = false → reativa em vez de inserir
 // ---------------------------------------------------------------------------
 
 export async function vincularMembro(data: {
@@ -82,13 +96,14 @@ export async function vincularMembro(data: {
 }
 
 // ---------------------------------------------------------------------------
-// Desativar membro (ADMIN only) — soft delete, preserva histórico
+// Remover vínculo de membro (ADMIN only) — hard delete
+// Remove completamente o vínculo. Histórico de solicitações é preservado.
 // ---------------------------------------------------------------------------
 
 export async function desativarMembro(
   profile_id: string,
   setor_id: number,
-): Promise<{ profile_id: string; setor_id: number; ativo: boolean }> {
+): Promise<{ profile_id: string; setor_id: number; removido: boolean }> {
   return callEdgeFunction('setores', { action: 'desativar_membro', profile_id, setor_id })
 }
 
@@ -106,7 +121,7 @@ export async function editarSetor(
 
 // ---------------------------------------------------------------------------
 // Desativar setor (ADMIN only)
-// Define ativo = false no setor + desativa todos os vínculos automaticamente
+// Define ativo = false no setor + remove todos os vínculos
 // Erro INVALID_STATUS se já estiver inativo
 // ---------------------------------------------------------------------------
 
@@ -118,8 +133,8 @@ export async function desativarSetor(
 
 // ---------------------------------------------------------------------------
 // Reativar setor (ADMIN only)
-// Reativa apenas o setor — vínculos devem ser reativados separadamente
-// Erro INVALID_STATUS se já estiver ativo
+// Reativa apenas o setor — vínculos foram removidos e devem ser recriados
+// via vincular_membro. Erro INVALID_STATUS se já estiver ativo.
 // ---------------------------------------------------------------------------
 
 export async function reativarSetor(

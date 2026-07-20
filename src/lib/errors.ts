@@ -9,13 +9,16 @@ const ERROR_MESSAGES: Record<string, string> = {
   NOT_FOUND: 'O recurso solicitado não foi encontrado.',
   INVALID_PAYLOAD: 'Dados enviados estão incompletos ou inválidos.',
   SELF_REQUEST: 'Você não pode solicitar troca com você mesmo.',
-  SETOR_SEM_GESTOR: 'Este setor não possui um gestor ativo.',
-  SETOR_GESTOR_DUPLICADO: 'Já existe um gestor ativo neste setor.',
   TURNOS_INCOMPATIVEIS: 'Os turnos selecionados têm cargas horárias diferentes.',
   CONFLICT: 'Já existe um registro com este nome.',
   LIMITE_MENSAL: 'Você atingiu o limite de solicitações deste mês.',
   SELF_DEACTIVATION: 'Você não pode desativar a si mesmo.',
   MATRICULA_DUPLICADA: 'Esta matrícula já está em uso por outro usuário.',
+  USUARIO_BLOQUEADO_MES: 'Usuário está bloqueado para trocas neste mês neste setor.',
+  FUNCAO_INCOMPATIVEL: 'Requisitante e cedente possuem funções diferentes no setor.',
+  FUNCAO_INVALIDA: 'Código de função inválido ou inativo.',
+  FUNCAO_DUPLICADA: 'Já existe uma função com este código ou descrição.',
+  DATA_TURNO_INDISPONIVEL: 'Já existe uma troca ativa para esta data e turno.',
 }
 
 export class AppError extends Error {

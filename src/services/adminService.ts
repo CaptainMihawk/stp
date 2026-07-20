@@ -120,13 +120,40 @@ interface ListarUsuariosResponse {
 export interface ListarUsuariosParams {
   page?: number
   per_page?: number
+  ativo?: boolean
+  role?: 'ADMIN' | 'FUNCIONARIO'
 }
 
 export async function listarUsuarios(params?: ListarUsuariosParams): Promise<ListarUsuariosResponse> {
-  return callEdgeFunction<ListarUsuariosResponse>('admin', { 
+  return callEdgeFunction<ListarUsuariosResponse>('admin', {
     action: 'listar_usuarios',
     page: params?.page ?? 1,
     per_page: params?.per_page ?? 50,
+    ...(params?.ativo !== undefined ? { ativo: params.ativo } : {}),
+    ...(params?.role ? { role: params.role } : {}),
+  }, { readOnly: true })
+}
+
+export interface PesquisarUsuariosParams {
+  termo: string
+  page?: number
+  per_page?: number
+  ativo?: boolean
+  role?: 'ADMIN' | 'FUNCIONARIO'
+  setor_id?: number
+}
+
+export async function pesquisarUsuarios(
+  params: PesquisarUsuariosParams,
+): Promise<ListarUsuariosResponse> {
+  return callEdgeFunction<ListarUsuariosResponse>('admin', {
+    action: 'pesquisar_usuarios',
+    termo: params.termo,
+    page: params.page ?? 1,
+    per_page: params.per_page ?? 50,
+    ...(params.ativo !== undefined ? { ativo: params.ativo } : {}),
+    ...(params.role ? { role: params.role } : {}),
+    ...(params.setor_id ? { setor_id: params.setor_id } : {}),
   }, { readOnly: true })
 }
 

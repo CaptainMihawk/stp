@@ -1,5 +1,6 @@
 import type { MembroSetor } from '../../services/setoresService';
 import type { TipoFuncao } from '../../services/adminService';
+import { ArrowLeftRight } from 'lucide-react';
 
 interface SectorMembersProps {
   members: MembroSetor[];
@@ -14,6 +15,11 @@ interface SectorMembersProps {
   onSelectFuncao?: (codigo: string) => void;
   onApplyMass?: () => void;
   massLoading?: boolean;
+  /** Mostrar membros inativos */
+  showInactive?: boolean;
+  onToggleInactive?: () => void;
+  /** Alterar papel do membro (MEMBRO ↔ GESTOR) */
+  onAlterarRole?: (profile_id: string, novo_role_setor: 'MEMBRO' | 'GESTOR') => void;
 }
 
 export default function SectorMembers({
@@ -28,8 +34,15 @@ export default function SectorMembers({
   onSelectFuncao,
   onApplyMass,
   massLoading,
+  showInactive = false,
+  onToggleInactive,
+  onAlterarRole,
 }: SectorMembersProps) {
-  const activeMembers = selectionMode ? members.filter((m) => m.ativo) : members;
+  const ativos = members.filter((m) => m.ativo);
+  const inativos = members.filter((m) => !m.ativo);
+  const visibleMembers = selectionMode
+    ? (showInactive ? members : ativos)
+    : members;
 
   if (members.length === 0) {
     return <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 16 }}>Nenhum membro neste setor.</p>;
@@ -37,16 +50,18 @@ export default function SectorMembers({
 
   return (
     <div>
-      {selectionMode && activeMembers.length > 0 && (
+      {selectionMode && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            <input
-              type="checkbox"
-              checked={activeMembers.length > 0 && selectedIds.length === activeMembers.length}
-              onChange={(e) => onSelectAll?.(e.target.checked)}
-            />
-            Selecionar todos ({activeMembers.length})
-          </label>
+          {ativos.length > 0 && (
+            <>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <input
+                  type="checkbox"
+                  checked={ativos.length > 0 && selectedIds.length === ativos.length}
+                  onChange={(e) => onSelectAll?.(e.target.checked)}
+                />
+                Selecionar todos ({ativos.length})
+              </label>
           <select
             value={selectedFuncao}
             onChange={(e) => onSelectFuncao?.(e.target.value)}
@@ -65,6 +80,18 @@ export default function SectorMembers({
           >
             {massLoading ? 'Aplicando...' : `Aplicar a ${selectedIds.length}`}
           </button>
+            </>
+          )}
+          {onToggleInactive && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: ativos.length > 0 ? 'auto' : undefined }}>
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={onToggleInactive}
+              />
+              Mostrar inativos ({inativos.length})
+            </label>
+          )}
         </div>
       )}
 
@@ -81,7 +108,7 @@ export default function SectorMembers({
           </tr>
         </thead>
         <tbody>
-          {activeMembers.map((m) => (
+          {visibleMembers.map((m) => (
             <tr key={m.profile_id} className={m.ativo ? '' : 'inativo'}>
               {selectionMode && (
                 <td>
@@ -96,8 +123,19 @@ export default function SectorMembers({
               <td className="td-nome" data-label="Nome">{m.nome_completo}</td>
               <td className="td-matricula" data-label="Matrícula">{m.matricula}</td>
               <td data-label="Papel">
-                <span className={`badge ${m.role_setor === 'GESTOR' ? 'badge-gestor' : 'badge-membro'}`}>
-                  {m.role_setor}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span className={`badge ${m.role_setor === 'GESTOR' ? 'badge-gestor' : 'badge-membro'}`}>
+                    {m.role_setor}
+                  </span>
+                  {m.ativo && onAlterarRole && (
+                    <button
+                      className="admin-btn-icon"
+                      title={`Alterar para ${m.role_setor === 'GESTOR' ? 'MEMBRO' : 'GESTOR'}`}
+                      onClick={() => onAlterarRole(m.profile_id, m.role_setor === 'GESTOR' ? 'MEMBRO' : 'GESTOR')}
+                    >
+                      <ArrowLeftRight size={12} />
+                    </button>
+                  )}
                 </span>
               </td>
               <td data-label="Função">{m.funcao || '—'}</td>
@@ -113,7 +151,7 @@ export default function SectorMembers({
                     style={{ fontSize: '0.75rem', padding: '4px 8px' }}
                     onClick={() => onDeactivate(m.profile_id)}
                   >
-                    Desativar vínculo
+                    Remover vínculo
                   </button>
                 )}
               </td>

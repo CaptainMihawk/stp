@@ -28,7 +28,7 @@ export default function AdminDashboard() {
 
         setUserCount(usersRes.meta.total);
         setSectorCount(setores.filter((s) => s.ativo).length);
-        setSectorsWithoutManager(setores.filter((s) => s.ativo && !s.gestor).length);
+        setSectorsWithoutManager(setores.filter((s) => s.ativo && s.gestores.length === 0).length);
         setFunctionCount(funcoes.filter((f) => f.ativo).length);
         setRequestCount(historico.pagination?.total ?? 0);
 
