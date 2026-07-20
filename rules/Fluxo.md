@@ -64,13 +64,14 @@ Todas as operações usam o mesmo endpoint. O comportamento é definido pelo cam
 - O cedente precisa existir e estar ativo.
 - O `setor_id` enviado deve pertencer a um setor com `ativo = true`.
 - Verifica que o requisitante possui vínculo ativo no `setor_id` enviado.
-- `gestor_responsavel_id` é resolvido automaticamente pelo backend: busca o `profile_id` com `role_setor = 'GESTOR'` e `ativo = true` no setor → se não encontrar, retorna erro `SETOR_SEM_GESTOR`.
+- `gestor_responsavel_id` é resolvido automaticamente pelo backend: busca um `profile_id` com `role_setor = 'GESTOR'` e `ativo = true` no setor → se não encontrar, retorna erro `SETOR_SEM_GESTOR`. Este campo é atualizado posteriormente pelo gestor que agir sobre a solicitação.
 - `turno_requisitante` e `turno_cedente` devem pertencer ao mesmo grupo de carga horária → se divergir, retorna erro `TURNOS_INCOMPATIVEIS`.
 - A solicitação nasce com status `aguardando_cedente`.
-- O limite mensal é compartilhado: conta todas as solicitações do mês onde o usuário aparece como `requisitante_id` **ou** `cedente_id`, com status diferente de `cancelado`, `recusado_cedente` ou `recusado_gestor`. Se o total atingir `limite_solicitacoes_mensal` (configurável via `/admin`, padrão 5), retorna erro `LIMITE_MENSAL`.
+- O limite mensal é compartilhado: conta todas as solicitações do mês onde o usuário aparece como `requisitante_id` **ou** `cedente_id`, com status diferente de `cancelado`, `recusado_cedente`, `recusado_gestor` ou `revogado`. Se o total atingir `limite_solicitacoes_mensal` (configurável via `/admin`, padrão 5), retorna erro `LIMITE_MENSAL`.
 - O mês de referência do bloqueio é derivado de `data_requisitante`. Se o **requisitante** estiver bloqueado neste setor e mês, retorna erro `USUARIO_BLOQUEADO_MES`. Se o **cedente** estiver bloqueado, também retorna `USUARIO_BLOQUEADO_MES` — com mensagem distinta indicando que o problema é o cedente.
 - Se o requisitante possuir `funcao` definida no vínculo do setor, o backend busca a `funcao` do cedente no mesmo setor. Se ambas forem não-nulas e divergirem, retorna erro `FUNCAO_INCOMPATIVEL`. Vínculos sem função cadastrada são ignorados na validação.
 - `funcao` é derivada automaticamente do vínculo do requisitante e salva na solicitação — sem campo no body.
+- Verifica se o requisitante ou o cedente já possuem uma troca ativa para a mesma data e turno (via `fn_checar_conflito_data_turno`). Se houver conflito, retorna erro `DATA_TURNO_INDISPONIVEL`.
 
 **Response 201**
 
@@ -113,7 +114,7 @@ ou
 
 ## gestor_responder
 
-**Quem pode usar:** gestor responsável
+**Quem pode usar:** qualquer gestor ativo do setor
 
 **Body**
 
@@ -128,10 +129,11 @@ ou
 
 **Regras de negócio**
 
-- Apenas o gestor responsável pode responder.
+- Apenas gestores com `role_setor = 'GESTOR'` e `ativo = true` no setor da solicitação podem responder (não mais restrito ao `gestor_responsavel_id` original).
 - O gestor só pode responder quando o status for `pendente`.
 - Se `aprovar = true`, o status vira `aprovado`, `aprovacao = true` e `respondido_em = now()`.
 - Se `aprovar = false`, o status vira `recusado_gestor`, `aprovacao = false` e `respondido_em = now()`.
+- `gestor_responsavel_id` é atualizado para o gestor que respondeu.
 
 **Response 200**
 
@@ -200,7 +202,7 @@ ou
 
 ## responder_revogacao
 
-**Quem pode usar:** gestor responsável
+**Quem pode usar:** qualquer gestor ativo do setor
 
 **Body**
 
@@ -214,10 +216,11 @@ ou
 
 **Regras de negócio**
 
-- Apenas o gestor responsável pode responder.
+- Apenas gestores com `role_setor = 'GESTOR'` e `ativo = true` no setor da solicitação podem responder (não mais restrito ao `gestor_responsavel_id` original).
 - Só é permitido quando o status for `pedido_revogacao`.
 - Se `aceitar = true`, o status vira `revogado`.
 - Se `aceitar = false`, o status volta ao status anterior à solicitação de revogação.
+- `gestor_responsavel_id` é atualizado para o gestor que respondeu.
 
 **Response 200**
 
@@ -233,7 +236,7 @@ ou
 
 ## revogar_solicitacao
 
-**Quem pode usar:** gestor responsável
+**Quem pode usar:** qualquer gestor ativo do setor
 
 **Body**
 
@@ -247,9 +250,10 @@ ou
 
 **Regras de negócio**
 
-- Apenas o gestor responsável pode revogar.
+- Apenas gestores com `role_setor = 'GESTOR'` e `ativo = true` no setor da solicitação podem revogar (não mais restrito ao `gestor_responsavel_id` original).
 - Pode ser usado em qualquer status ativo (`aguardando_cedente`, `pendente`, `aprovado`, `pedido_revogacao`).
 - Justificativa é opcional.
+- `gestor_responsavel_id` é atualizado para o gestor que revogou.
 
 **Response 200**
 
@@ -278,8 +282,8 @@ ou
 | --- | --- |
 | `minhas` | solicitações onde o usuário é o requisitante |
 | `cedente` | solicitações onde o usuário é o cedente |
-| `pendentes_gestor` | solicitações do gestor com status `pendente` |
-| `pedidos_revogacao` | solicitações do gestor com status `pedido_revogacao` |
+| `pendentes_gestor` | solicitações de todos os setores onde o usuário é GESTOR ativo, com status `pendente` |
+| `pedidos_revogacao` | solicitações de todos os setores onde o usuário é GESTOR ativo, com status `pedido_revogacao` |
 
 `page` e `per_page` são opcionais (padrão: page = 1, per_page = 20, máximo per_page = 100).
 
@@ -326,7 +330,7 @@ ou
 **Regras de negócio**
 
 - Conta todas as solicitações do mês corrente onde o usuário aparece como `requisitante_id` ou `cedente_id`.
-- Exclui status `cancelado`, `recusado_cedente` e `recusado_gestor`.
+- Exclui status `cancelado`, `recusado_cedente`, `recusado_gestor` e `revogado`.
 - Retorna também o limite configurado e o mês de referência.
 
 **Response 200**
@@ -389,7 +393,7 @@ ou
 
 ## listar_solicitacoes_gestor
 
-**Quem pode usar:** gestor responsável
+**Quem pode usar:** qualquer gestor ativo do setor
 
 **Body**
 
@@ -405,7 +409,7 @@ ou
 
 **Regras de negócio**
 
-- Retorna todas as solicitações onde o usuário logado é o `gestor_responsavel_id`.
+- Retorna todas as solicitações de todos os setores onde o usuário logado possui `role_setor = 'GESTOR'` e `ativo = true` (filtro por `setor_id`, não por `gestor_responsavel_id`).
 - Ordenado por `criado_em` decrescente.
 - `page` e `per_page` são opcionais (padrão: page = 1, per_page = 20, máximo per_page = 100).
 - Inclui `aprovacao`, `replica_gestor` e `respondido_em`.
@@ -451,7 +455,7 @@ ou
 
 ## listar_historico_solicitacao
 
-**Quem pode usar:** gestor responsável
+**Quem pode usar:** qualquer gestor ativo do setor
 
 **Body**
 
@@ -467,7 +471,7 @@ ou
 
 **Regras de negócio**
 
-- Apenas o gestor responsável da solicitação pode consultar.
+- Apenas gestores com `role_setor = 'GESTOR'` e `ativo = true` no setor da solicitação podem consultar.
 - `page` e `per_page` são opcionais (padrão: `page = 1`, `per_page = 50`, máximo `per_page = 100`).
 - Ordenado por `alterado_em` decrescente.
 - `mes` é opcional — formato `YYYY-MM` (ex: `"2026-06"`), filtra os registros do histórico por `alterado_em`.
@@ -700,7 +704,6 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 **Regras de negócio**
 
 - Somente ADMIN.
-- Se `role_setor = 'GESTOR'`: valida que não existe outro gestor ativo no setor → erro `SETOR_GESTOR_DUPLICADO`.
 - Se o vínculo já existir com `ativo = false`: reativa em vez de inserir duplicata.
 - Código de `funcao` inválido ou inativo → erro `FUNCAO_INVALIDA`.
 
@@ -760,7 +763,7 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
   "id": 1,
   "nome": "UTI",
   "ativo": true,
-  "gestor": { "nome_completo": "João Silva", "matricula": "MAT001" },
+  "gestores": [{ "nome_completo": "João Silva", "matricula": "MAT001" }],
   "total_membros": 8
 }]
 ```
@@ -1411,7 +1414,7 @@ Representa as funções institucionais que os profissionais exercem nos setores 
 
 ## Regras
 
-- Gerenciada exclusivamente pelo ADMIN via actions `criar_funcao`, `listar_funcoes` e `desativar_funcao`.
+- Gerenciada exclusivamente pelo ADMIN via actions `criar_funcao`, `listar_funcoes`, `editar_funcao`, `desativar_funcao` e `reativar_funcao`.
 - Vinculada a `profiles_setores.funcao` e `solicitacoes.funcao`.
 - Desativar uma função não remove vínculos existentes — apenas impede novos usos.
 - A validação de compatibilidade em trocas considera apenas funções ativas e não-nulas.
@@ -1436,8 +1439,8 @@ Representa as funções institucionais que os profissionais exercem nos setores 
 | `INVALID_PAYLOAD` | 400 | body inválido |
 | `SELF_REQUEST` | 400 | requisitante e cedente são a mesma pessoa |
 | `SETOR_SEM_GESTOR` | 422 | setor não possui gestor ativo |
-| `SETOR_GESTOR_DUPLICADO` | 409 | já existe um gestor ativo neste setor |
 | `TURNOS_INCOMPATIVEIS` | 422 | turnos com cargas horárias diferentes |
+| `DATA_TURNO_INDISPONIVEL` | 422 | requisitante ou cedente já possui troca ativa na mesma data+turno |
 | `CONFLICT` | 409 | nome de setor duplicado / bloqueio já existente |
 | `LIMITE_MENSAL` | 422 | usuário atingiu o limite de solicitações do mês |
 | `SELF_DEACTIVATION` | 403 | admin tentou desativar a si mesmo |
@@ -1445,8 +1448,7 @@ Representa as funções institucionais que os profissionais exercem nos setores 
 | `USUARIO_BLOQUEADO_MES` | 422 | requisitante ou cedente está bloqueado para trocas neste mês neste setor |
 | `FUNCAO_INCOMPATIVEL` | 422 | requisitante e cedente têm funções diferentes no setor |
 | `FUNCAO_INVALIDA` | 400 | código não existe em `tipos_funcao` ou está inativo |
-| `FUNCAO_DUPLICADA` | 409 | código já existe em `tipos_funcao` |
-| `FUNCAO_DUPLICADA` | 409 | código **ou descrição** já existe em `tipos_funcao` |
+| `FUNCAO_DUPLICADA` | 409 | código ou descrição já existe em `tipos_funcao` |
 
 ---
 
