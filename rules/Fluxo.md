@@ -645,7 +645,7 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 **Regras de negócio**
 
 - Somente ADMIN.
-- Define `setores.ativo = false` e desativa todos os vínculos `profiles_setores` do setor automaticamente.
+- Define `setores.ativo = false` e remove todos os vínculos `profiles_setores` do setor.
 - Bloqueia novas solicitações neste setor (`SETOR_SEM_GESTOR` não se aplica — o setor já não passa na validação `ativo = true`).
 - Solicitações já existentes não são afetadas.
 - Erro `INVALID_STATUS` se o setor já estiver inativo.
@@ -669,13 +669,49 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 **Regras de negócio**
 
 - Somente ADMIN.
-- Reativa apenas o setor — vínculos de membros devem ser reativados separadamente via `vincular_membro`.
+- Reativa apenas o setor — vínculos de membros foram removidos e devem ser recriados via `vincular_membro`.
 - Erro `INVALID_STATUS` se o setor já estiver ativo.
 
 **Response 200**
 
 ```json
 { "setor_id": 1, "ativo": true }
+```
+
+## alterar_role_setor
+
+**Quem pode usar:** ADMIN
+
+**Body**
+
+```json
+{
+  "action": "alterar_role_setor",
+  "profile_id": "uuid",
+  "setor_id": 1,
+  "novo_role_setor": "GESTOR"
+}
+```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `profile_id` | ✅ | UUID do usuário |
+| `setor_id` | ✅ | ID do setor |
+| `novo_role_setor` | ✅ | `MEMBRO` ou `GESTOR` |
+
+**Regras de negócio**
+
+- Somente ADMIN.
+- Vínculo deve existir e estar ativo — erro `NOT_FOUND` caso contrário.
+- `novo_role_setor` deve ser diferente do atual — erro `INVALID_PAYLOAD` caso contrário.
+- `novo_role_setor` deve ser `MEMBRO` ou `GESTOR` — erro `INVALID_PAYLOAD` caso contrário.
+- Um GESTOR global não pode ser alterado para MEMBRO no mesmo setor que gerencia — erro `FORBIDDEN`.
+- Preserva `criado_em` e demais campos do vínculo.
+
+**Response 200**
+
+```json
+{ "profile_id": "uuid", "setor_id": 1, "role_setor": "GESTOR", "ativo": true }
 ```
 
 ## vincular_membro
@@ -704,7 +740,7 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 **Regras de negócio**
 
 - Somente ADMIN.
-- Se o vínculo já existir com `ativo = false`: reativa em vez de inserir duplicata.
+- Erro `CONFLICT` se o usuário já possuir vínculo ativo neste setor. Use `alterar_role_setor` para mudar o role.
 - Código de `funcao` inválido ou inativo → erro `FUNCAO_INVALIDA`.
 
 **Response 201**
@@ -730,13 +766,14 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 **Regras de negócio**
 
 - Somente ADMIN.
-- Faz `ativo = false` no vínculo, não deleta.
-- Histórico preservado.
+- Remove completamente o vínculo entre o usuário e o setor (hard delete).
+- Histórico de solicitações é preservado (referencia `profiles` e `setores` diretamente).
+- Use `vincular_membro` para recriar o vínculo posteriormente.
 
 **Response 200**
 
 ```json
-{ "profile_id": "uuid", "setor_id": 1, "ativo": false }
+{ "profile_id": "uuid", "setor_id": 1, "removido": true }
 ```
 
 ## listar_setores
