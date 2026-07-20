@@ -64,7 +64,7 @@ Todas as operações usam o mesmo endpoint. O comportamento é definido pelo cam
 - O cedente precisa existir e estar ativo.
 - O `setor_id` enviado deve pertencer a um setor com `ativo = true`.
 - Verifica que o requisitante possui vínculo ativo no `setor_id` enviado.
-- `gestor_responsavel_id` é resolvido automaticamente pelo backend: busca um `profile_id` com `role_setor = 'GESTOR'` e `ativo = true` no setor → se não encontrar, retorna erro `SETOR_SEM_GESTOR`. Este campo é atualizado posteriormente pelo gestor que agir sobre a solicitação.
+- `gestor_responsavel_id` é resolvido automaticamente pelo backend: busca um `profile_id` com `role_setor = 'GESTOR'` e `ativo = true` no setor. Se não encontrar, o campo será NULL e a solicitação poderá ser respondida por qualquer gestor ativo do setor posteriormente.
 - `turno_requisitante` e `turno_cedente` devem pertencer ao mesmo grupo de carga horária → se divergir, retorna erro `TURNOS_INCOMPATIVEIS`.
 - A solicitação nasce com status `aguardando_cedente`.
 - O limite mensal é compartilhado: conta todas as solicitações do mês onde o usuário aparece como `requisitante_id` **ou** `cedente_id`, com status diferente de `cancelado`, `recusado_cedente`, `recusado_gestor` ou `revogado`. Se o total atingir `limite_solicitacoes_mensal` (configurável via `/admin`, padrão 5), retorna erro `LIMITE_MENSAL`.
@@ -705,7 +705,7 @@ Mesmo padrão da `solicitacoes` — único endpoint com `action` no body.
 - Vínculo deve existir e estar ativo — erro `NOT_FOUND` caso contrário.
 - `novo_role_setor` deve ser diferente do atual — erro `INVALID_PAYLOAD` caso contrário.
 - `novo_role_setor` deve ser `MEMBRO` ou `GESTOR` — erro `INVALID_PAYLOAD` caso contrário.
-- Um GESTOR global não pode ser alterado para MEMBRO no mesmo setor que gerencia — erro `FORBIDDEN`.
+- Um GESTOR pode ser alterado para MEMBRO mesmo que seja o único gestor do setor. O setor ficará sem gestor ativo até que um novo gestor seja designado.
 - Preserva `criado_em` e demais campos do vínculo.
 
 **Response 200**
@@ -1475,7 +1475,7 @@ Representa as funções institucionais que os profissionais exercem nos setores 
 | `NOT_FOUND` | 404 | solicitação ou recurso não encontrado |
 | `INVALID_PAYLOAD` | 400 | body inválido |
 | `SELF_REQUEST` | 400 | requisitante e cedente são a mesma pessoa |
-| `SETOR_SEM_GESTOR` | 422 | setor não possui gestor ativo |
+
 | `TURNOS_INCOMPATIVEIS` | 422 | turnos com cargas horárias diferentes |
 | `DATA_TURNO_INDISPONIVEL` | 422 | requisitante ou cedente já possui troca ativa na mesma data+turno |
 | `CONFLICT` | 409 | nome de setor duplicado / bloqueio já existente |
