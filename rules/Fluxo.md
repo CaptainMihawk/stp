@@ -898,6 +898,18 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
     "ativo": true,
     "email": "joao@stp.interno",
     "ultimo_login": "2026-06-01T10:00:00Z",
+    "profiles_setores": [
+    				{
+    					"ativo": true,
+    					"funcao": "FISIO",
+    					"setores": {
+    						"id": 28,
+    						"nome": "Tecnologia da Informação"
+    					},
+    					"setor_id": 28,
+    					"role_setor": "MEMBRO"
+    				}
+    			],
     "criado_em": "2026-05-01T00:00:00Z"
   }],
   "meta": {
@@ -955,6 +967,18 @@ Exclusivo para usuários com `role = 'ADMIN'`. Concentra operações privilegiad
     "ativo": true,
     "email": "mat001@stp.interno",
     "ultimo_login": "2026-06-01T10:00:00Z",
+    "profiles_setores": [
+    				{
+    					"ativo": true,
+    					"funcao": "FISIO",
+    					"setores": {
+    						"id": 28,
+    						"nome": "Tecnologia da Informação"
+    					},
+    					"setor_id": 28,
+    					"role_setor": "MEMBRO"
+    				}
+    			],
     "criado_em": "2026-05-01T00:00:00Z"
   }],
   "meta": {
